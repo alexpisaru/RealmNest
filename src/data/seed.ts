@@ -3,8 +3,8 @@ import { PRESET_BY_ID } from './presets';
 import { WORLD_BY_ID } from './worlds';
 
 /**
- * Demo crew created on first launch (and by "Reset demo data").
- * Everything here is ordinary, editable data — rename, re-role or delete it.
+ * The demo team, created only when the user asks for it (Settings › Data › Load the demo team).
+ * A new profile starts with no agents (0.11.1). Everything here is ordinary, editable data.
  */
 const DEMO: [presetId: string, name: string, role: string, worldId: string, outfit?: string][] = [
   ['founder', 'Alex', 'Founder & CEO', 'farm', 'farm.casual'],

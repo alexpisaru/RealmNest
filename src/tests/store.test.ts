@@ -54,13 +54,13 @@ describe('persistence', () => {
     expect(m.settings.volume.master).toBeGreaterThan(0);
   });
 
-  it('AppStore seeds a demo crew, persists edits and reloads them', async () => {
+  it('AppStore starts a new profile with no agents, persists edits and reloads them', async () => {
     const adapter = new MemoryAdapter();
     const bus = new EventBus();
     const store = new AppStore(new RealmNestRepository(adapter), bus);
     await store.init();
     const n = store.getState().characters.length;
-    expect(n).toBeGreaterThan(0);
+    expect(n).toBe(0);
     const c = store.createCharacter({ name: 'Mario', role: 'Researcher', visualPresetId: 'spiky', worldId: 'research' });
     store.updateCharacter(c.id, { role: 'Lead researcher' });
     store.setWorld('research');

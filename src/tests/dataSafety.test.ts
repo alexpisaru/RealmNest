@@ -105,13 +105,13 @@ describe('unreadable is not missing (D-3)', () => {
     expect(ls.getItem('nestra:corrupt:connections')).toBe('{"connections": [broken');
   });
 
-  it('a broken save opens the demo in memory without saving it', async () => {
+  it('a broken save opens empty in memory without saving over it (no demo agents)', async () => {
     const ls = new FakeStorage();
     ls.setItem('nestra:save', 'not json');
     const store = new AppStore(new RealmNestRepository(new LocalStorageAdapter('nestra:', ls)), new EventBus());
     await store.init();
     expect(store.getState().ready).toBe(true);
-    expect(store.getState().characters.length).toBeGreaterThan(0);
+    expect(store.getState().characters).toEqual([]);
     expect(ls.getItem('nestra:save')).toBe('not json');
     expect(ls.getItem('nestra:corrupt:save')).toBe('not json');
   });

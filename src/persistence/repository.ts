@@ -79,13 +79,23 @@ export class RealmNestRepository {
 
   async load(): Promise<SaveData | undefined> {
     const raw = await this.storage.get<SaveData>(KEY);
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+    this.malformed = false;
+    if (raw === undefined || raw === null) return undefined;
+    if (typeof raw !== 'object' || Array.isArray(raw)) {
+      // readable but not a save: treated like an unreadable one (kept, copied, not overwritten at
+      // startup), never like a new profile
+      this.malformed = true;
+      if ((await this.storage.get('corrupt:' + KEY)) === undefined) await this.storage.set('corrupt:' + KEY, raw);
+      return undefined;
+    }
     return migrate(raw);
   }
 
+  private malformed = false;
+
   /** the save exists but could not be read: keep it until the user changes something */
   unreadable() {
-    return !!this.storage.isUnreadable?.(KEY);
+    return this.malformed || !!this.storage.isUnreadable?.(KEY);
   }
 
   async save(data: Omit<SaveData, 'version'>) {

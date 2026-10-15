@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.1 Public Beta (2026-10-15)
+
+Hotfix. Release notes: [docs/RELEASE_NOTES_0.11.1.md](docs/RELEASE_NOTES_0.11.1.md).
+
+- **A new installation starts with a clean workspace.** The app no longer creates the 12-agent demo team when a profile is new, when a profile has no agents (it came back after deleting every agent) or when the saved profile could not be read. An existing profile opens exactly as saved. The demo team is loaded only on request: Settings › General › Data › Load the demo team (was "Reset demo data").
+- A saved profile that is readable JSON but not a profile is kept aside (`nestra:corrupt:save`) like an unreadable one, never replaced at startup.
+- Tests: `src/tests/firstRun.test.ts` (new profile empty and stays empty, first agent persists, deleting the last agent leaves zero, every user store starts empty, existing profiles kept as they are, no production import of demo or test data).
+
 ## 0.11.0 Public Beta (2026-10-15)
 
 The first public beta: everything built since 0.6.0-beta, listed below by milestone (newest first), plus the V1 hardening. Release notes for users: [docs/RELEASE_NOTES_0.11.0.md](docs/RELEASE_NOTES_0.11.0.md).

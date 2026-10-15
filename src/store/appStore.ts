@@ -5,7 +5,6 @@
 
 import type { EventBus } from '../core/events';
 import type { Character } from '../domain/character';
-import { demoCrew } from '../data/seed';
 import { WORLD_BY_ID } from '../data/worlds';
 import { onFlushAll } from '../persistence/coalesced';
 import { DEFAULT_SETTINGS, systemLanguage, type RealmNestRepository, type Settings } from '../persistence/repository';
@@ -104,17 +103,22 @@ export class AppStore {
     try {
       saved = await this.repo.load();
     } catch (err) {
-      // the app opens on the demo in memory; nothing is saved over what could not be loaded
-      this.set({ ready: true, characters: demoCrew() }, false);
+      // nothing is invented and nothing is saved over what could not be loaded
+      this.set({ ready: true, characters: [] }, false);
       throw err;
     }
-    if (saved && saved.characters.length) {
+    if (saved) {
+      // an existing profile opens exactly as saved, also with no agents: empty is a valid state
       this.set({ ready: true, characters: saved.characters, settings: saved.settings, currentWorldId: saved.currentWorldId, focusWorldId: saved.currentWorldId, seenIntro: saved.seenIntro }, false);
+    } else if (this.repo.unreadable()) {
+      // a save that exists but cannot be read opens empty in memory and is not overwritten at
+      // startup (its raw text was copied to nestra:corrupt:save); the first real change saves (D-3)
+      this.set({ ready: true, characters: [] }, false);
     } else {
-      this.set({ ready: true, characters: demoCrew(), settings: saved?.settings ?? { ...DEFAULT_SETTINGS, language: systemLanguage() } }, false);
-      // an unreadable save is not overwritten with the demo at startup (its raw text was copied
-      // to nestra:corrupt:save); the first real change saves over it (D-3)
-      if (!this.repo.unreadable()) await this.persistNow();
+      // a genuinely new profile: a clean workspace, with no agents (0.11.1). Demo agents are only
+      // created when the user asks for them (Settings › Data › Load the demo team).
+      this.set({ ready: true, characters: [], settings: { ...DEFAULT_SETTINGS, language: systemLanguage() } }, false);
+      await this.persistNow();
     }
   }
 
@@ -294,7 +298,10 @@ export class AppStore {
   }
 
   /** the demo agents replace every agent (each one is deleted: its memories and agent settings go); settings go back to the defaults */
+  /** "Load the demo team": only on the user's request, never at startup */
   async resetDemo() {
+    // loaded on demand: the demo crew is not part of the startup path
+    const { demoCrew } = await import('../data/seed');
     // the demo ids are fixed: without a delete, a new demo agent would inherit the old one's data (D-6)
     for (const c of this.state.characters) this.bus.emit('character.deleted', { id: c.id, name: c.name });
     await this.repo.clear();

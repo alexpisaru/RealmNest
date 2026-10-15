@@ -285,6 +285,8 @@ describe('moving agents between worlds', () => {
     const bus = new EventBus();
     const store = new AppStore(new RealmNestRepository(new MemoryAdapter()), bus);
     await store.init();
+    // a new profile has no agents: these tests use the demo team, loaded on request
+    await store.resetDemo();
     const alex = store.getState().characters.find((c) => c.metadata.founder)!;
     const from = alex.worldId;
     const to = from === 'office' ? 'farm' : 'office';
@@ -302,6 +304,8 @@ describe('moving agents between worlds', () => {
   it('wears again what it wore when it comes back', async () => {
     const store = new AppStore(new RealmNestRepository(new MemoryAdapter()), new EventBus());
     await store.init();
+    // a new profile has no agents: these tests use the demo team, loaded on request
+    await store.resetDemo();
     const farmer = store.getState().characters.find((c) => c.worldId === 'farm' && !c.metadata.founder)!;
     const other = outfitsForWorld(WORLD_BY_ID.farm.outfitCategory).find((o) => !o.id.startsWith('universal.') && o.id !== WORLD_BY_ID.farm.defaultOutfitId && o.id !== farmer.outfitId)!;
     store.setOutfit(farmer.id, other.id);
@@ -357,6 +361,8 @@ describe('profile', () => {
     const storage = new MemoryAdapter();
     const store = new AppStore(new RealmNestRepository(storage), new EventBus());
     await store.init();
+    // a new profile has no agents: these tests use the demo team, loaded on request
+    await store.resetDemo();
     expect(store.getState().settings).toMatchObject({ displayName: '', profileRole: '', avatar: '' });
     store.updateSettings({ displayName: 'Alex', profileRole: 'Founder', avatar: 'data:image/jpeg;base64,AAAA' });
     await store.persistNow();

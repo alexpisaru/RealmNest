@@ -37,7 +37,7 @@ Deep Research searches through the connection's own provider (Claude's web searc
 ## Backup, reset, uninstall
 
 - **Backup**: Settings › General › Data › Export a backup writes every record of the app's local storage to one file; Import restores it. Files (attachments, artifacts) stay in the app data folder; secrets are never included.
-- **Reset demo data** replaces agents and settings with the demo crew; chats, knowledge and files are kept.
+- **Load the demo team** (Settings › General › Data) replaces agents and settings with 12 sample agents, only when you ask; chats, knowledge and files are kept. A new installation starts with no agents.
 - **Uninstall** (Settings › Apps › RealmNest OS) removes the program, the Start-menu shortcut and the Apps entry and **keeps your data** (checked on 0.11.0: the data folder stays and a reinstall finds everything). The uninstaller also offers to delete the app data. Saved keys and tokens in Windows Credential Manager always stay until you remove them. To remove everything, also delete `%LOCALAPPDATA%\app.nestra.desktop`, `%USERPROFILE%\.nestra`, the `app.nestra.desktop` entries in Windows Credential Manager (Control Panel › Credential Manager › Windows Credentials) and, if you want, the RealmNest folders in Documents.
 - **Reinstall / upgrade**: install the new version over the old one; data, settings, connections, keys and Telegram pairing are kept (checked from a previous build's data to the 0.11.0 installer).
 - `ollama serve` started by RealmNest is stopped when RealmNest closes; an Ollama you started yourself is left alone.

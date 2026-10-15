@@ -6,7 +6,7 @@ Please report security problems privately, not in a public issue: on the GitHub 
 
 ## Supported versions
 
-RealmNest OS 0.11.0 is a public beta for Windows 10 and 11. Only the latest beta receives fixes. There is no automatic updater: install the newest release over the old one (your data is kept). Releases are not code-signed yet; check the SHA-256 published with each installer.
+RealmNest OS 0.11.1 is a public beta for Windows 10 and 11. Only the latest beta receives fixes. There is no automatic updater: install the newest release over the old one (your data is kept). Releases are not code-signed yet; check the SHA-256 published with each installer.
 
 ## Threat model in short
 
