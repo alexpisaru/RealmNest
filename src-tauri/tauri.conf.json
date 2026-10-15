@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "RealmNest OS",
+  "version": "0.11.0",
+  "identifier": "app.nestra.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "RealmNest OS",
+        "width": 1600,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "center": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "publisher": "Marius Alexandru Pisaru",
+    "copyright": "Copyright (C) 2026 Marius Alexandru Pisaru. Licensed under the GNU AGPL v3 or later.",
+    "shortDescription": "A visual operating environment for AI agents",
+    "license": "AGPL-3.0-or-later",
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "licenseFile": "../LICENSE",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "English",
+          "Italian"
+        ],
+        "displayLanguageSelector": false
+      }
+    }
+  }
+}

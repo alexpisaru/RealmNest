@@ -1,0 +1,22 @@
+{
+  "id": "teo",
+  "name": "Teo",
+  "role": "Technician (factory test: spec only, no new drawing code)",
+  "body": "standard",
+  "view": "se",
+  "outline": "#170a0c",
+  "skin": { "hl": "#c98d62", "base": "#a8693f", "shade": "#7f4a2b", "deep": "#5a3220" },
+  "eyes": "#3b2516",
+  "mouth": "#5e2a22",
+  "hair": {
+    "style": "short",
+    "colors": { "hl": "#3d3a44", "base": "#25222b", "shade": "#16141b", "deep": "#0d0b10" }
+  },
+  "outfit": {
+    "id": "tech",
+    "top": { "style": "tech-jacket", "colors": { "hl": "#e98a5a", "base": "#c4623a", "shade": "#93452a", "deep": "#66301f", "accent": "#f2d27a" } },
+    "shirt": { "colors": { "hl": "#d8e6e2", "base": "#b9cbc6", "shade": "#8fa39e" } },
+    "trousers": { "colors": { "hl": "#7e8456", "base": "#5f6540", "shade": "#454a2e" } },
+    "shoes": { "colors": { "hl": "#ffffff", "base": "#dcdad4", "shade": "#a9a59c" } }
+  }
+}

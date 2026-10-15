@@ -1,0 +1,23 @@
+{
+  "id": "idle",
+  "label": "Idle: breathing",
+  "frames": 8,
+  "fps": 8,
+  "loop": true,
+  "note": "Translation only, whole pixels: the chest settles 1 px, the head and arms follow one frame later. No rotation, so the art is copied untouched. pixelExact: the offsets stay 1 px on bodies drawn at a higher density (a breath is a pixel, not a scaled amount).",
+  "tracks": {
+    "torso": {
+      "dy": [0, 0, 1, 1, 1, 1, 0, 0]
+    },
+    "head": {
+      "dy": [0, 0, -1, 0, 0, 0, 1, 0]
+    },
+    "upper_arm_R": {
+      "dy": [0, 0, -1, 0, 0, 0, 1, 0]
+    },
+    "upper_arm_L": {
+      "dy": [0, 0, -1, 0, 0, 0, 1, 0]
+    }
+  },
+  "pixelExact": true
+}

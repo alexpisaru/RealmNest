@@ -1,0 +1,337 @@
+{
+  "id": "base-f",
+  "name": "RealmNest base HD (donna)",
+  "body": "f",
+  "generator": "tools/charpipe/hd (PhotoCraft draws, EffectCraft animates, outlines per band after animation)",
+  "frame": {
+    "w": 160,
+    "h": 256
+  },
+  "anchor": {
+    "x": 80,
+    "y": 240
+  },
+  "bands": [
+    "back",
+    "armL",
+    "legL",
+    "legR",
+    "torso",
+    "head",
+    "armR"
+  ],
+  "slots": [
+    "body",
+    "shoes",
+    "bottom",
+    "top",
+    "hair"
+  ],
+  "outline": [
+    "#1a0806",
+    "#1a0806",
+    "#4a251a"
+  ],
+  "animations": [
+    {
+      "id": "idle",
+      "label": "Idle: breathing",
+      "frames": 8,
+      "fps": 8,
+      "loop": true
+    },
+    {
+      "id": "walk",
+      "label": "Walk (se), stepping along the ground",
+      "frames": 8,
+      "fps": 12,
+      "loop": true
+    },
+    {
+      "id": "work",
+      "label": "Work: typing at a desk",
+      "frames": 4,
+      "fps": 6,
+      "loop": true
+    }
+  ],
+  "assets": {
+    "body": {
+      "slot": "body",
+      "label": "Base body",
+      "ramps": {
+        "skin": {
+          "hl": "#eea06a",
+          "base": "#e0905a",
+          "shade": "#c8784a",
+          "deep": "#a65e3c"
+        },
+        "briefs": {
+          "hl": "#8c8d90",
+          "base": "#77787c",
+          "shade": "#5c5d62"
+        }
+      },
+      "sheets": {
+        "armL": {
+          "idle": "body/armL/idle.png",
+          "walk": "body/armL/walk.png",
+          "work": "body/armL/work.png"
+        },
+        "legL": {
+          "idle": "body/legL/idle.png",
+          "walk": "body/legL/walk.png",
+          "work": "body/legL/work.png"
+        },
+        "legR": {
+          "idle": "body/legR/idle.png",
+          "walk": "body/legR/walk.png",
+          "work": "body/legR/work.png"
+        },
+        "torso": {
+          "idle": "body/torso/idle.png",
+          "walk": "body/torso/walk.png",
+          "work": "body/torso/work.png"
+        },
+        "head": {
+          "idle": "body/head/idle.png",
+          "walk": "body/head/walk.png",
+          "work": "body/head/work.png"
+        },
+        "armR": {
+          "idle": "body/armR/idle.png",
+          "walk": "body/armR/walk.png",
+          "work": "body/armR/work.png"
+        }
+      }
+    },
+    "hair:short": {
+      "slot": "hair",
+      "label": "Short",
+      "ramps": {
+        "main": {
+          "hl": "#6b4632",
+          "base": "#4a2e22",
+          "shade": "#331e17",
+          "deep": "#22130f"
+        }
+      },
+      "sheets": {
+        "head": {
+          "idle": "hair-short/head/idle.png",
+          "walk": "hair-short/head/walk.png",
+          "work": "hair-short/head/work.png"
+        }
+      }
+    },
+    "hair:long": {
+      "slot": "hair",
+      "label": "Long",
+      "ramps": {
+        "main": {
+          "hl": "#6b4632",
+          "base": "#4a2e22",
+          "shade": "#331e17",
+          "deep": "#22130f"
+        }
+      },
+      "sheets": {
+        "back": {
+          "idle": "hair-long/back/idle.png",
+          "walk": "hair-long/back/walk.png",
+          "work": "hair-long/back/work.png"
+        },
+        "head": {
+          "idle": "hair-long/head/idle.png",
+          "walk": "hair-long/head/walk.png",
+          "work": "hair-long/head/work.png"
+        }
+      }
+    },
+    "top:tee": {
+      "slot": "top",
+      "label": "T-shirt",
+      "ramps": {
+        "main": {
+          "hl": "#f2f0ea",
+          "base": "#dcd9d0",
+          "shade": "#b5b1a6",
+          "deep": "#8d897f"
+        }
+      },
+      "sheets": {
+        "armL": {
+          "idle": "top-tee/armL/idle.png",
+          "walk": "top-tee/armL/walk.png",
+          "work": "top-tee/armL/work.png"
+        },
+        "torso": {
+          "idle": "top-tee/torso/idle.png",
+          "walk": "top-tee/torso/walk.png",
+          "work": "top-tee/torso/work.png"
+        },
+        "armR": {
+          "idle": "top-tee/armR/idle.png",
+          "walk": "top-tee/armR/walk.png",
+          "work": "top-tee/armR/work.png"
+        }
+      }
+    },
+    "top:jacket": {
+      "slot": "top",
+      "label": "Field jacket",
+      "ramps": {
+        "main": {
+          "hl": "#7d8c5a",
+          "base": "#5f6e42",
+          "shade": "#475330",
+          "deep": "#323b22",
+          "accent": "#c9a14a"
+        }
+      },
+      "sheets": {
+        "armL": {
+          "idle": "top-jacket/armL/idle.png",
+          "walk": "top-jacket/armL/walk.png",
+          "work": "top-jacket/armL/work.png"
+        },
+        "torso": {
+          "idle": "top-jacket/torso/idle.png",
+          "walk": "top-jacket/torso/walk.png",
+          "work": "top-jacket/torso/work.png"
+        },
+        "armR": {
+          "idle": "top-jacket/armR/idle.png",
+          "walk": "top-jacket/armR/walk.png",
+          "work": "top-jacket/armR/work.png"
+        }
+      }
+    },
+    "bottom:jeans": {
+      "slot": "bottom",
+      "label": "Jeans",
+      "ramps": {
+        "main": {
+          "hl": "#5c7aa8",
+          "base": "#41598a",
+          "shade": "#2f4168",
+          "deep": "#212d4a",
+          "accent": "#c9a14a"
+        }
+      },
+      "sheets": {
+        "legL": {
+          "idle": "bottom-jeans/legL/idle.png",
+          "walk": "bottom-jeans/legL/walk.png",
+          "work": "bottom-jeans/legL/work.png"
+        },
+        "legR": {
+          "idle": "bottom-jeans/legR/idle.png",
+          "walk": "bottom-jeans/legR/walk.png",
+          "work": "bottom-jeans/legR/work.png"
+        },
+        "torso": {
+          "idle": "bottom-jeans/torso/idle.png",
+          "walk": "bottom-jeans/torso/walk.png",
+          "work": "bottom-jeans/torso/work.png"
+        }
+      }
+    },
+    "bottom:chinos": {
+      "slot": "bottom",
+      "label": "Chinos",
+      "ramps": {
+        "main": {
+          "hl": "#cdb58a",
+          "base": "#b0966a",
+          "shade": "#8c744f",
+          "deep": "#665337",
+          "accent": "#5a4632"
+        }
+      },
+      "sheets": {
+        "legL": {
+          "idle": "bottom-chinos/legL/idle.png",
+          "walk": "bottom-chinos/legL/walk.png",
+          "work": "bottom-chinos/legL/work.png"
+        },
+        "legR": {
+          "idle": "bottom-chinos/legR/idle.png",
+          "walk": "bottom-chinos/legR/walk.png",
+          "work": "bottom-chinos/legR/work.png"
+        },
+        "torso": {
+          "idle": "bottom-chinos/torso/idle.png",
+          "walk": "bottom-chinos/torso/walk.png",
+          "work": "bottom-chinos/torso/work.png"
+        }
+      }
+    },
+    "shoes:sneakers": {
+      "slot": "shoes",
+      "label": "Sneakers",
+      "ramps": {
+        "main": {
+          "hl": "#ffffff",
+          "base": "#e6e4df",
+          "shade": "#b9b6ae",
+          "deep": "#8c887f",
+          "accent": "#d8604a"
+        }
+      },
+      "sheets": {
+        "legL": {
+          "idle": "shoes-sneakers/legL/idle.png",
+          "walk": "shoes-sneakers/legL/walk.png",
+          "work": "shoes-sneakers/legL/work.png"
+        },
+        "legR": {
+          "idle": "shoes-sneakers/legR/idle.png",
+          "walk": "shoes-sneakers/legR/walk.png",
+          "work": "shoes-sneakers/legR/work.png"
+        }
+      }
+    },
+    "shoes:boots": {
+      "slot": "shoes",
+      "label": "Boots",
+      "ramps": {
+        "main": {
+          "hl": "#9a5a3a",
+          "base": "#7a4128",
+          "shade": "#5a2e1c",
+          "deep": "#3c1d12",
+          "accent": "#d8b38a"
+        }
+      },
+      "sheets": {
+        "legL": {
+          "idle": "shoes-boots/legL/idle.png",
+          "walk": "shoes-boots/legL/walk.png",
+          "work": "shoes-boots/legL/work.png"
+        },
+        "legR": {
+          "idle": "shoes-boots/legR/idle.png",
+          "walk": "shoes-boots/legR/walk.png",
+          "work": "shoes-boots/legR/work.png"
+        }
+      }
+    }
+  },
+  "outfits": {
+    "casual": {
+      "label": "Casual",
+      "top": "top:tee",
+      "bottom": "bottom:jeans",
+      "shoes": "shoes:sneakers",
+      "hair": "hair:long"
+    },
+    "field": {
+      "label": "Field",
+      "top": "top:jacket",
+      "bottom": "bottom:chinos",
+      "shoes": "shoes:boots",
+      "hair": "hair:long"
+    }
+  }
+}

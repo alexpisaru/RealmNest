@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-skill-fetch"
+description = "Enables the skill_fetch command without any pre-configured scope."
+commands.allow = ["skill_fetch"]
+
+[[permission]]
+identifier = "deny-skill-fetch"
+description = "Denies the skill_fetch command without any pre-configured scope."
+commands.deny = ["skill_fetch"]

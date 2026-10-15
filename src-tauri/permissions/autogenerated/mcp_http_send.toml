@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mcp-http-send"
+description = "Enables the mcp_http_send command without any pre-configured scope."
+commands.allow = ["mcp_http_send"]
+
+[[permission]]
+identifier = "deny-mcp-http-send"
+description = "Denies the mcp_http_send command without any pre-configured scope."
+commands.deny = ["mcp_http_send"]

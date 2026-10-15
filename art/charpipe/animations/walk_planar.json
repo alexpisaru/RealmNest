@@ -1,0 +1,35 @@
+{
+  "id": "walk_planar",
+  "label": "Walk, limbs turning in the screen plane (rejected)",
+  "frames": 8,
+  "fps": 12,
+  "loop": true,
+  "groundLock": true,
+  "note": "First attempt, kept for comparison: legs and arms rotate about hip/shoulder/knee/elbow in the screen plane. Degrees clockwise on screen: negative swings a hanging limb forward (towards screen right in the se view). The pelvis height is solved per frame so the lowest sole stays on its ground row (groundLock).",
+  "tracks": {
+    "upper_leg_L": {
+      "rot": [-16, -8, -1, 7, 14, 5, -5, -13]
+    },
+    "lower_leg_L": {
+      "rot": [0, 4, 2, 0, 6, 26, 30, 12]
+    },
+    "upper_leg_R": {
+      "rot": [14, 5, -5, -13, -16, -8, -1, 7]
+    },
+    "lower_leg_R": {
+      "rot": [6, 26, 30, 12, 0, 4, 2, 0]
+    },
+    "upper_arm_L": {
+      "rot": [10, 4, -4, -9, -11, -6, -1, 5]
+    },
+    "lower_arm_L": {
+      "rot": [0, 0, 0, -6, -8, -4, 0, 0]
+    },
+    "upper_arm_R": {
+      "rot": [-11, -6, -1, 5, 10, 4, -4, -9]
+    },
+    "lower_arm_R": {
+      "rot": [-8, -4, 0, 0, 0, 0, 0, -6]
+    }
+  }
+}

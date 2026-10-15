@@ -1,0 +1,31 @@
+{
+  "id": "walk",
+  "label": "Walk (se), stepping along the ground",
+  "frames": 8,
+  "fps": 12,
+  "loop": true,
+  "note": "The shipped Alex walk's motion, as data: each leg's sole steps up to 5 px along the ground diagonal (a shear about the hip, not a turn), the swinging foot lifts up to 4 px, each hand swings 9 px with the opposite foot, the body rises 1 px except on the passing frames. step tracks are px along the ground; the generator turns them into an EffectCraft null (rotation + non-uniform scale) above the limb.",
+  "tracks": {
+    "root": {
+      "dy": [-1, -1, 0, -1, -1, -1, 0, -1]
+    },
+    "upper_leg_R": {
+      "step": [0, 3.54, 5.0, 3.54, 0, -3.54, -5.0, -3.54]
+    },
+    "lower_leg_R": {
+      "dy": [-4, -3, 0, 0, 0, 0, 0, -3]
+    },
+    "upper_leg_L": {
+      "step": [0, -3.54, -5.0, -3.54, 0, 3.54, 5.0, 3.54]
+    },
+    "lower_leg_L": {
+      "dy": [0, 0, 0, -3, -4, -3, 0, 0]
+    },
+    "upper_arm_R": {
+      "step": [0, -6.36, -9.0, -6.36, 0, 6.36, 9.0, 6.36]
+    },
+    "upper_arm_L": {
+      "step": [0, 6.36, 9.0, 6.36, 0, -6.36, -9.0, -6.36]
+    }
+  }
+}

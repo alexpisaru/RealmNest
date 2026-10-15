@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-compat-chat"
+description = "Enables the compat_chat command without any pre-configured scope."
+commands.allow = ["compat_chat"]
+
+[[permission]]
+identifier = "deny-compat-chat"
+description = "Denies the compat_chat command without any pre-configured scope."
+commands.deny = ["compat_chat"]

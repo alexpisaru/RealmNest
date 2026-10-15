@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mcp-bridge-close"
+description = "Enables the mcp_bridge_close command without any pre-configured scope."
+commands.allow = ["mcp_bridge_close"]
+
+[[permission]]
+identifier = "deny-mcp-bridge-close"
+description = "Denies the mcp_bridge_close command without any pre-configured scope."
+commands.deny = ["mcp_bridge_close"]

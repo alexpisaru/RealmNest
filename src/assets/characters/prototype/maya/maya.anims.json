@@ -1,0 +1,111 @@
+{
+  "id": "maya",
+  "name": "Maya",
+  "generator": "tools/charpipe/build.ts (EffectCraft)",
+  "effectcraft": "effectcraft-cli 0.8.0",
+  "rig": "nestra-humanoid-3q",
+  "view": "se",
+  "frameWidth": 80,
+  "frameHeight": 128,
+  "anchor": {
+    "x": 40,
+    "y": 120
+  },
+  "layout": "horizontal strip, no padding, frame i at x = i * frameWidth",
+  "modes": {
+    "x1": "parts rendered at 1×, Draft (nearest-neighbour) layers",
+    "rotsprite": "parts enlarged 8× with Scale2x, rendered at 8×, sampled back (RotSprite)"
+  },
+  "outfits": {
+    "field": "open-jacket (field)",
+    "lab": "tech-jacket (lab)"
+  },
+  "accessories": {
+    "glasses": "round-glasses"
+  },
+  "animations": [
+    {
+      "id": "idle",
+      "label": "Idle: breathing",
+      "frames": 8,
+      "fps": 8,
+      "loop": true
+    },
+    {
+      "id": "walk",
+      "label": "Walk (se), stepping along the ground",
+      "frames": 8,
+      "fps": 12,
+      "loop": true
+    },
+    {
+      "id": "work",
+      "label": "Work: typing at a desk",
+      "frames": 4,
+      "fps": 6,
+      "loop": true
+    },
+    {
+      "id": "sit",
+      "label": "Sit: on a sofa, an armchair or a bench",
+      "frames": 8,
+      "fps": 6,
+      "loop": true,
+      "anchorDy": -6
+    }
+  ],
+  "sheets": {
+    "x1": {
+      "field": {
+        "idle": "x1/field/idle.png",
+        "walk": "x1/field/walk.png",
+        "work": "x1/field/work.png",
+        "sit": "x1/field/sit.png"
+      },
+      "field+glasses": {
+        "idle": "x1/field+glasses/idle.png",
+        "walk": "x1/field+glasses/walk.png",
+        "work": "x1/field+glasses/work.png",
+        "sit": "x1/field+glasses/sit.png"
+      },
+      "lab": {
+        "idle": "x1/lab/idle.png",
+        "walk": "x1/lab/walk.png",
+        "work": "x1/lab/work.png",
+        "sit": "x1/lab/sit.png"
+      },
+      "lab+glasses": {
+        "idle": "x1/lab+glasses/idle.png",
+        "walk": "x1/lab+glasses/walk.png",
+        "work": "x1/lab+glasses/work.png",
+        "sit": "x1/lab+glasses/sit.png"
+      }
+    },
+    "rotsprite": {
+      "field": {
+        "idle": "rotsprite/field/idle.png",
+        "walk": "rotsprite/field/walk.png",
+        "work": "rotsprite/field/work.png",
+        "sit": "rotsprite/field/sit.png"
+      },
+      "field+glasses": {
+        "idle": "rotsprite/field+glasses/idle.png",
+        "walk": "rotsprite/field+glasses/walk.png",
+        "work": "rotsprite/field+glasses/work.png",
+        "sit": "rotsprite/field+glasses/sit.png"
+      },
+      "lab": {
+        "idle": "rotsprite/lab/idle.png",
+        "walk": "rotsprite/lab/walk.png",
+        "work": "rotsprite/lab/work.png",
+        "sit": "rotsprite/lab/sit.png"
+      },
+      "lab+glasses": {
+        "idle": "rotsprite/lab+glasses/idle.png",
+        "walk": "rotsprite/lab+glasses/walk.png",
+        "work": "rotsprite/lab+glasses/work.png",
+        "sit": "rotsprite/lab+glasses/sit.png"
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+# dependencies and build outputs
+node_modules
+dist
+*.tsbuildinfo
+src-tauri/target
+src-tauri/gen
+
+# release packaging outputs (tools/release-files.mjs, installer builds)
+release-staging/
+release-artifacts/
+*.msi
+*-setup.exe
+
+# logs, caches, OS and editor files
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
+.mcp.json
+
+# secrets and local configuration: never commit
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+
+# art pipeline working folders (development only)
+art/charpipe/build
+art/charpipe/characters/*/cleanup

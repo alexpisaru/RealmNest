@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-anthropic-models"
+description = "Enables the anthropic_models command without any pre-configured scope."
+commands.allow = ["anthropic_models"]
+
+[[permission]]
+identifier = "deny-anthropic-models"
+description = "Denies the anthropic_models command without any pre-configured scope."
+commands.deny = ["anthropic_models"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mcp-http-start"
+description = "Enables the mcp_http_start command without any pre-configured scope."
+commands.allow = ["mcp_http_start"]
+
+[[permission]]
+identifier = "deny-mcp-http-start"
+description = "Denies the mcp_http_start command without any pre-configured scope."
+commands.deny = ["mcp_http_start"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-claude-logout"
+description = "Enables the claude_logout command without any pre-configured scope."
+commands.allow = ["claude_logout"]
+
+[[permission]]
+identifier = "deny-claude-logout"
+description = "Denies the claude_logout command without any pre-configured scope."
+commands.deny = ["claude_logout"]

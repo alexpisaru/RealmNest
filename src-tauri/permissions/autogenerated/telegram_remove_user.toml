@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-telegram-remove-user"
+description = "Enables the telegram_remove_user command without any pre-configured scope."
+commands.allow = ["telegram_remove_user"]
+
+[[permission]]
+identifier = "deny-telegram-remove-user"
+description = "Denies the telegram_remove_user command without any pre-configured scope."
+commands.deny = ["telegram_remove_user"]

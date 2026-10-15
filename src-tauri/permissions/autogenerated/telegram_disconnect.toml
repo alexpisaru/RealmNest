@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-telegram-disconnect"
+description = "Enables the telegram_disconnect command without any pre-configured scope."
+commands.allow = ["telegram_disconnect"]
+
+[[permission]]
+identifier = "deny-telegram-disconnect"
+description = "Denies the telegram_disconnect command without any pre-configured scope."
+commands.deny = ["telegram_disconnect"]

@@ -1,0 +1,16 @@
+import { McpClient } from './mcp';
+const c = new McpClient('C:/Program Files/PhotoCraft/photocraft-cli.exe', ['mcp', '--automation-read-root', 'art/charpipe/characters/maya', '--automation-write-root', 'art/charpipe/characters/maya']);
+await c.init('probe');
+const run = async (id: string, params: object = {}) => (await c.tool('command_run', { id, params })).text;
+await c.tool('doc_new', { width: 16, height: 16, background: 'transparent' });
+console.log('new.group', await run('layer.new.group', { name: 'torso' }));
+console.log('new.layer', await run('layer.new.layer', { name: 'shirt' }));
+await run('select.rect', { x: 4, y: 4, width: 5, height: 6, antiAlias: false });
+await run('edit.fill', { contents: 'color', color: '#d0a040' });
+await run('select.deselect');
+console.log('dup', await run('layer.duplicate', {}));
+console.log('fill lock', await run('edit.fill', { contents: 'color', color: '#200810', preserveTransparency: true }));
+console.log('translate', await run('layer.translate', { dx: 1, dy: 0 }));
+const insp = JSON.parse((await c.tool('doc_inspect')).text);
+console.log(JSON.stringify(insp.layers.map((l: any) => [l.id, l.name, l.kind, l.parent ?? l.group ?? '', l.bounds])), JSON.stringify(Object.keys(insp)));
+await c.close();

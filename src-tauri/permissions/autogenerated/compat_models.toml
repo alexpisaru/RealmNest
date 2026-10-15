@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-compat-models"
+description = "Enables the compat_models command without any pre-configured scope."
+commands.allow = ["compat_models"]
+
+[[permission]]
+identifier = "deny-compat-models"
+description = "Denies the compat_models command without any pre-configured scope."
+commands.deny = ["compat_models"]

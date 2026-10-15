@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-files-put"
+description = "Enables the files_put command without any pre-configured scope."
+commands.allow = ["files_put"]
+
+[[permission]]
+identifier = "deny-files-put"
+description = "Denies the files_put command without any pre-configured scope."
+commands.deny = ["files_put"]

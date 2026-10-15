@@ -1,0 +1,346 @@
+<title>RealmNest Character Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a workbench — the stage (the character on a floor tile, at whole-pixel zoom) beside the
+   wardrobe panel; one column on phones. Tokens follow RealmNest's own app palette (dark-first). */
+:root {
+  --bg: #100e12;
+  --panel: #1c181e;
+  --panel-2: #26212a;
+  --line: rgba(255, 236, 214, 0.10);
+  --line-2: rgba(255, 236, 214, 0.20);
+  --text: #f3e9dc;
+  --text-2: #cbbfb1;
+  --muted: #8f8478;
+  --accent: #f2b98a;
+  --accent-ink: #2a1a10;
+  --stage: #2b2630;
+  --stage-2: #332d38;
+  --floor: #4a4152;
+  --floor-2: #554b5e;
+  --display: 'Fraunces', Georgia, serif;
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f4ede4; --panel: #fbf7f1; --panel-2: #efe6da; --line: rgba(60, 38, 22, 0.12); --line-2: rgba(60, 38, 22, 0.24);
+    --text: #2a1c14; --text-2: #5a4636; --muted: #8a7462; --accent: #c4703e; --accent-ink: #fff7ef;
+    --stage: #e6dccf; --stage-2: #ded2c3; --floor: #cbbba8; --floor-2: #d6c7b5; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f4ede4; --panel: #fbf7f1; --panel-2: #efe6da; --line: rgba(60, 38, 22, 0.12); --line-2: rgba(60, 38, 22, 0.24);
+  --text: #2a1c14; --text-2: #5a4636; --muted: #8a7462; --accent: #c4703e; --accent-ink: #fff7ef;
+  --stage: #e6dccf; --stage-2: #ded2c3; --floor: #cbbba8; --floor-2: #d6c7b5; color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); padding: 20px 16px 28px; }
+.app { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+h1 { font: 650 28px/1.1 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 13px; }
+.sub code, .mono { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+.stagewrap { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; justify-content: center; }
+.stage canvas { display: block; max-width: 100%; height: auto; image-rendering: pixelated; }
+.stagebar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; color: var(--text-2); font-size: 12px; }
+.stagebar .spacer { flex: 1; }
+.strip { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+.strip button { padding: 0; border: 1px solid var(--line); background: var(--stage); border-radius: 8px; cursor: pointer; flex: 0 0 auto; }
+.strip button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.strip canvas { display: block; width: 48px; height: 77px; image-rendering: pixelated; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.group { display: flex; flex-direction: column; gap: 8px; }
+.group > .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button, .btn { font: 500 13px var(--sans); color: var(--text-2); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 6px 11px; cursor: pointer; }
+.seg button:hover, .btn:hover { border-color: var(--line-2); color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.slot { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 6px 10px; align-items: center; }
+.slot .name { font-size: 12px; color: var(--text-2); }
+.swatches { grid-column: 2; display: flex; gap: 6px; flex-wrap: wrap; }
+.sw { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line-2); cursor: pointer; padding: 0; }
+.sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+input[type="range"] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+.check { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13px; }
+.stack { font: 12px/1.6 var(--mono); color: var(--text-2); margin: 0; padding: 10px 12px; background: var(--panel-2); border-radius: 9px; max-height: 190px; overflow: auto; }
+.stack .band { color: var(--muted); }
+.note { color: var(--muted); font-size: 12px; margin: 0; }
+@media (max-width: 860px) { .app { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="app">
+  <header>
+    <h1>RealmNest Character Studio</h1>
+    <span class="sub">Base HD uomo e donna · <span class="mono">160×256</span>, piedi <span class="mono">(80, 240)</span> · disegnati in PhotoCraft, animati in EffectCraft, contorni dopo l'animazione · ogni livello si compone dal vivo</span>
+  </header>
+
+  <section class="stagewrap" aria-label="Anteprima">
+    <div class="stage"><canvas id="stage" width="640" height="560"></canvas></div>
+    <div class="stagebar">
+      <span id="info" class="mono"></span>
+      <span class="spacer"></span>
+      <button class="btn" id="play" type="button">Pausa</button>
+      <button class="btn" id="prev" type="button" aria-label="Fotogramma precedente">‹</button>
+      <button class="btn" id="next" type="button" aria-label="Fotogramma successivo">›</button>
+    </div>
+    <div class="strip" id="strip" aria-label="Fotogrammi"></div>
+  </section>
+
+  <aside class="panel" aria-label="Guardaroba">
+    <div class="group">
+      <div class="label">Corpo</div>
+      <div class="seg" id="bodies"></div>
+    </div>
+    <div class="group">
+      <div class="label">Look</div>
+      <div class="seg" id="presets"></div>
+    </div>
+    <div class="group">
+      <div class="label">Animazione</div>
+      <div class="seg" id="anims"></div>
+    </div>
+    <div class="group" id="slots">
+      <div class="label">Livelli</div>
+    </div>
+    <div class="group">
+      <div class="label"><span>Velocità</span><span id="speedv" class="mono">1.00×</span></div>
+      <div class="row"><input id="speed" type="range" min="0.25" max="2" step="0.05" value="1" aria-label="Velocità"></div>
+    </div>
+    <div class="group">
+      <div class="label"><span>Zoom</span><span id="zoomv" class="mono">2×</span></div>
+      <div class="row"><input id="zoom" type="range" min="1" max="4" step="1" value="2" aria-label="Zoom"></div>
+      <label class="check"><input type="checkbox" id="anchor"> Mostra punto d'appoggio</label>
+      <label class="check"><input type="checkbox" id="ref"> Riferimento accanto</label>
+    </div>
+    <div class="group">
+      <div class="label">Pila dei livelli (dietro → davanti)</div>
+      <pre class="stack" id="stack"></pre>
+      <p class="note">Ogni asset è disegnato una volta su ciascun corpo e animato con lo stesso rig. I livelli si sovrappongono fascia per fascia, ognuna col suo contorno calcolato fotogramma per fotogramma.</p>
+    </div>
+  </aside>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const BODY_NAMES = { m: 'Uomo', f: 'Donna' };
+let M, ASSETS, SHEETS;
+function useBody(b) { M = DATA.bodies[b].manifest; ASSETS = M.assets; SHEETS = DATA.bodies[b].sheets; }
+useBody(Object.keys(DATA.bodies)[0]);
+const W = M.frame.w, H = M.frame.h;
+const SLOTS = ['hair', 'top', 'bottom', 'shoes'];
+const SLOT_NAMES = { hair: 'Capelli', top: 'Sopra', bottom: 'Sotto', shoes: 'Scarpe', body: 'Pelle' };
+const ANIM_NAMES = { idle: 'Fermo', walk: 'Cammina', work: 'Lavora' };
+
+const state = { body: 'm', anim: 'walk', speed: 1, zoom: 2, playing: true, frame: 0, t: 0, anchor: false, ref: false,
+  pick: { hair: 'hair:short', top: 'top:tee', bottom: 'bottom:jeans', shoes: 'shoes:sneakers' },
+  color: { body: 0, hair: 0, top: 0, bottom: 0, shoes: 0 } };
+// the largest whole zoom that fits the window, unless the viewer chose one before
+state.zoom = Math.max(1, Math.min(4, Math.floor((window.innerHeight - 170) / (256 + 30)), Math.floor((Math.min(window.innerWidth, 1180) - 420) / 240) || 1));
+try { const s = JSON.parse(localStorage.getItem('nestra-studio') || 'null'); if (s) Object.assign(state, s, { playing: true, t: 0 }); } catch (e) {}
+if (!DATA.bodies[state.body]) state.body = Object.keys(DATA.bodies)[0];
+useBody(state.body);
+const save = () => { try { localStorage.setItem('nestra-studio', JSON.stringify({ body: state.body, anim: state.anim, speed: state.speed, zoom: state.zoom, pick: state.pick, color: state.color, anchor: state.anchor, ref: state.ref })); } catch (e) {} };
+
+// ── images and recolouring ──
+const imgs = {};
+function image(src) {
+  if (!imgs[src]) { const im = new Image(); im.src = src; imgs[src] = im; }
+  return imgs[src];
+}
+const hexToInt = (h) => parseInt(h.slice(1), 16);
+const recoloured = new Map();
+/** a sheet with its asset's ramp swapped for another ramp (exact colours only) */
+function sheet(asset, band, anim) {
+  const rel = ASSETS[asset].sheets[band] && ASSETS[asset].sheets[band][anim];
+  if (!rel) return null;
+  const im = image(SHEETS[rel]);
+  if (!im.complete || !im.naturalWidth) return null;
+  const slot = ASSETS[asset].slot;
+  const opts = DATA.palettes[slot === 'body' ? 'body' : asset] || [];
+  const choice = opts[state.color[slot]] || opts[0];
+  const key = state.body + '/' + rel + '|' + (choice ? choice.name : '');
+  if (recoloured.has(key)) return recoloured.get(key);
+  const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+  const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+  if (choice && opts[0] && choice !== opts[0]) {
+    const map = new Map();
+    for (const k of Object.keys(opts[0].ramp)) if (choice.ramp[k]) map.set(hexToInt(opts[0].ramp[k]), hexToInt(choice.ramp[k]));
+    const d = x.getImageData(0, 0, c.width, c.height);
+    const p = d.data;
+    for (let i = 0; i < p.length; i += 4) {
+      if (!p[i + 3]) continue;
+      const to = map.get((p[i] << 16) | (p[i + 1] << 8) | p[i + 2]);
+      if (to !== undefined) { p[i] = to >> 16; p[i + 1] = (to >> 8) & 255; p[i + 2] = to & 255; }
+    }
+    x.putImageData(d, 0, 0);
+  }
+  recoloured.set(key, c);
+  return c;
+}
+const chosen = () => ['body', ...SLOTS.map((s) => state.pick[s]).filter(Boolean)];
+/** draw one composited frame: band by band, each band's assets in slot order */
+function drawFrame(ctx, anim, f, dx, dy, z) {
+  const order = chosen().sort((a, b) => M.slots.indexOf(ASSETS[a].slot) - M.slots.indexOf(ASSETS[b].slot));
+  for (const band of M.bands) for (const a of order) {
+    const s = sheet(a, band, anim);
+    if (s) ctx.drawImage(s, f * W, 0, W, H, dx, dy, W * z, H * z);
+  }
+}
+
+// ── stage ──
+const stage = document.getElementById('stage');
+const sctx = stage.getContext('2d');
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function floor(ctx, cx, cy, z) {
+  // an isometric floor tile (2:1), pixel-stepped, under the feet
+  const hw = 72 * z, hh = 36 * z;
+  ctx.fillStyle = css('--floor');
+  for (let i = 0; i < hh; i += z) {
+    const w = Math.round((hw * (i / hh)) / z) * z;
+    ctx.fillRect(cx - w, cy - hh + i, w * 2, z);
+    ctx.fillRect(cx - w, cy + hh - i - z, w * 2, z);
+  }
+  ctx.fillStyle = css('--floor-2');
+  for (let i = 0; i < hh; i += z) { const w = Math.round((hw * (i / hh)) / z) * z; ctx.fillRect(cx - w, cy - hh + i, z, z); ctx.fillRect(cx + w - z, cy - hh + i, z, z); }
+  // soft contact shadow
+  ctx.globalAlpha = 0.25; ctx.fillStyle = '#1a0e14';
+  for (let j = -3; j <= 3; j++) { const w = Math.round(Math.sqrt(1 - (j / 4) ** 2) * 26) * z; ctx.fillRect(cx - w, cy + j * z * 2 - z, w * 2, z * 2); }
+  ctx.globalAlpha = 1;
+}
+function render() {
+  const z = state.zoom;
+  const showRef = state.ref;
+  const cw = (showRef ? W * 2 + 24 : W + 80) * z;
+  const ch = (H + 30) * z;
+  if (stage.width !== cw || stage.height !== ch) { stage.width = cw; stage.height = ch; }
+  sctx.imageSmoothingEnabled = false;
+  sctx.fillStyle = css('--stage'); sctx.fillRect(0, 0, cw, ch);
+  const cx = showRef ? (W + 24 + W / 2) * z : (cw / 2);
+  const fy = (M.anchor.y + 6) * z;
+  floor(sctx, cx, fy, z);
+  const ox = cx - M.anchor.x * z, oy = fy - M.anchor.y * z;
+  drawFrame(sctx, state.anim, state.frame, ox, oy, z);
+  if (showRef) {
+    const r = image(DATA.ref);
+    if (r.complete) { floor(sctx, (W / 2) * z, fy, z); sctx.drawImage(r, 3, -8, W, H, 0, oy, W * z, H * z); }
+    sctx.fillStyle = css('--muted'); sctx.font = `${11 * Math.max(1, z / 2)}px ${css('--sans')}`;
+    sctx.fillText('riferimento', 8 * z, (H + 24) * z); sctx.fillText('base + livelli', (W + 32) * z, (H + 24) * z);
+  }
+  if (state.anchor) { sctx.fillStyle = '#ef6a5a'; sctx.fillRect(cx - z, fy - 6 * z - 3 * z, 2 * z, 6 * z); sctx.fillRect(cx - 3 * z, fy - 6 * z - z, 6 * z, 2 * z); }
+}
+
+// ── frame strip ──
+const strip = document.getElementById('strip');
+function buildStrip() {
+  const a = M.animations.find((x) => x.id === state.anim);
+  strip.innerHTML = '';
+  for (let f = 0; f < a.frames; f++) {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', `Fotogramma ${f + 1}`);
+    const c = document.createElement('canvas'); c.width = W; c.height = H; b.appendChild(c);
+    b.addEventListener('click', () => { state.playing = false; state.frame = f; syncPlay(); });
+    strip.appendChild(b);
+  }
+  paintStrip();
+}
+function paintStrip() {
+  [...strip.children].forEach((b, f) => {
+    const c = b.firstChild, x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.clearRect(0, 0, W, H);
+    drawFrame(x, state.anim, f, 0, 0, 1);
+    b.setAttribute('aria-pressed', String(f === state.frame));
+  });
+}
+
+// ── panel ──
+const el = (tag, props = {}, kids = []) => { const n = Object.assign(document.createElement(tag), props); kids.forEach((k) => n.appendChild(k)); return n; };
+function segButtons(host, items, current, onPick) {
+  host.innerHTML = '';
+  for (const [id, label] of items) {
+    const b = el('button', { type: 'button', textContent: label }); b.setAttribute('aria-pressed', String(id === current));
+    b.addEventListener('click', () => onPick(id)); host.appendChild(b);
+  }
+}
+function buildPanel() {
+  segButtons(document.getElementById('bodies'), Object.keys(DATA.bodies).map((b) => [b, BODY_NAMES[b] || b]), state.body, (b) => { state.body = b; useBody(b); const o = M.outfits.casual; if (o && o.hair) state.pick.hair = state.pick.hair ? o.hair : ''; buildStrip(); refresh(); });
+  const looks = Object.entries(M.outfits).map(([k, v]) => [k, v.label]).concat([['base', 'Solo corpo']]);
+  const curLook = Object.entries(M.outfits).find(([, v]) => v.top === state.pick.top && v.bottom === state.pick.bottom && v.shoes === state.pick.shoes);
+  segButtons(document.getElementById('presets'), looks, curLook ? curLook[0] : (!state.pick.top && !state.pick.bottom && !state.pick.shoes && !state.pick.hair ? 'base' : ''), (id) => {
+    if (id === 'base') state.pick = { hair: '', top: '', bottom: '', shoes: '' };
+    else { const o = M.outfits[id]; state.pick = { top: o.top, bottom: o.bottom, shoes: o.shoes, hair: o.hair || state.pick.hair || 'hair:short' }; }
+    refresh();
+  });
+  segButtons(document.getElementById('anims'), M.animations.map((a) => [a.id, ANIM_NAMES[a.id] || a.id]), state.anim, (id) => { state.anim = id; state.frame = 0; state.t = 0; buildStrip(); refresh(); });
+  const host = document.getElementById('slots');
+  [...host.querySelectorAll('.slot')].forEach((n) => n.remove());
+  for (const slot of ['body', ...SLOTS]) {
+    const row = el('div', { className: 'slot' });
+    row.appendChild(el('span', { className: 'name', textContent: SLOT_NAMES[slot] }));
+    if (slot === 'body') row.appendChild(el('span', { className: 'mono', textContent: 'corpo base' }));
+    else {
+      const seg = el('div', { className: 'seg' });
+      const items = [['', 'Nessuno'], ...Object.entries(ASSETS).filter(([, a]) => a.slot === slot).map(([id, a]) => [id, a.label])];
+      segButtons(seg, items, state.pick[slot] || '', (id) => { state.pick[slot] = id; state.color[slot] = state.color[slot] || 0; refresh(); });
+      row.appendChild(seg);
+    }
+    const opts = DATA.palettes[slot === 'body' ? 'body' : state.pick[slot]] || [];
+    if (opts.length > 1) {
+      const sw = el('div', { className: 'swatches' });
+      opts.forEach((o, i) => {
+        const b = el('button', { type: 'button', className: 'sw', title: o.name }); b.style.background = o.ramp.base;
+        b.setAttribute('aria-label', `${SLOT_NAMES[slot]}: ${o.name}`); b.setAttribute('aria-pressed', String((state.color[slot] || 0) === i));
+        b.addEventListener('click', () => { state.color[slot] = i; refresh(); }); sw.appendChild(b);
+      });
+      row.appendChild(sw);
+    }
+    host.appendChild(row);
+  }
+  // the stack readout: what is drawn, in order
+  const order = chosen().sort((a, b) => M.slots.indexOf(ASSETS[a].slot) - M.slots.indexOf(ASSETS[b].slot));
+  const lines = [];
+  for (const band of M.bands) {
+    const here = order.filter((a) => ASSETS[a].sheets[band]);
+    if (here.length) lines.push(`<span class="band">${band.padEnd(6)}</span> ${here.map((a) => ASSETS[a].label).join(' · ')}`);
+  }
+  document.getElementById('stack').innerHTML = lines.join('\n');
+}
+function syncPlay() { document.getElementById('play').textContent = state.playing ? 'Pausa' : 'Riproduci'; }
+function refresh() { buildPanel(); paintStrip(); render(); save(); }
+
+document.getElementById('play').addEventListener('click', () => { state.playing = !state.playing; syncPlay(); });
+const step = (d) => { const a = M.animations.find((x) => x.id === state.anim); state.playing = false; state.frame = (state.frame + d + a.frames) % a.frames; syncPlay(); paintStrip(); render(); };
+document.getElementById('prev').addEventListener('click', () => step(-1));
+document.getElementById('next').addEventListener('click', () => step(1));
+const speed = document.getElementById('speed'); speed.value = state.speed;
+speed.addEventListener('input', () => { state.speed = +speed.value; document.getElementById('speedv').textContent = state.speed.toFixed(2) + '×'; save(); });
+const zoom = document.getElementById('zoom'); zoom.value = state.zoom;
+zoom.addEventListener('input', () => { state.zoom = +zoom.value; document.getElementById('zoomv').textContent = state.zoom + '×'; render(); save(); });
+const anchor = document.getElementById('anchor'); anchor.checked = state.anchor;
+anchor.addEventListener('change', () => { state.anchor = anchor.checked; render(); save(); });
+const ref = document.getElementById('ref'); ref.checked = state.ref;
+ref.addEventListener('change', () => { state.ref = ref.checked; render(); save(); });
+document.getElementById('speedv').textContent = state.speed.toFixed(2) + '×';
+document.getElementById('zoomv').textContent = state.zoom + '×';
+
+let last = performance.now();
+function tick(now) {
+  const a = M.animations.find((x) => x.id === state.anim);
+  if (state.playing) {
+    state.t += Math.min(0.1, (now - last) / 1000) * state.speed;
+    const f = Math.floor(state.t * a.fps) % a.frames;
+    if (f !== state.frame) { state.frame = f; paintStrip(); }
+  }
+  last = now;
+  document.getElementById('info').textContent = `${ANIM_NAMES[a.id] || a.id} · ${a.frames} fotogrammi a ${a.fps} fps · ${state.frame + 1}/${a.frames}`;
+  render();
+  requestAnimationFrame(tick);
+}
+// first paint once every sheet has decoded
+Promise.all(Object.values(DATA.bodies).flatMap((b) => Object.values(b.sheets)).concat([DATA.ref]).map((src) => new Promise((ok) => { const im = image(src); if (im.complete) ok(); else { im.onload = ok; im.onerror = ok; } }))).then(() => { buildStrip(); refresh(); syncPlay(); requestAnimationFrame(tick); });
+</script>

@@ -1,0 +1,141 @@
+{
+  "id": "alex",
+  "name": "Alex (founder)",
+  "rig": "humanoid-3q",
+  "view": "se",
+  "source": {
+    "file": "source/alex_se.png",
+    "note": "A copy of the shipped se view (src/render/hd4/peopleArt.ts via composeTemplate, stand pose). `character:build alex --refresh-source` writes it again from production; the production art is never written."
+  },
+  "pivots": {
+    "root": [40, 120],
+    "pelvis": [41, 80],
+    "torso": [41, 80],
+    "head": [41, 36],
+    "upper_arm_R": [25, 45],
+    "lower_arm_R": [23, 58],
+    "upper_arm_L": [55, 45],
+    "lower_arm_L": [56, 59],
+    "upper_leg_R": [34, 81],
+    "lower_leg_R": [29, 101],
+    "upper_leg_L": [47, 81],
+    "lower_leg_L": [49, 101]
+  },
+  "soles": {
+    "note": "One point per boot, the middle of its bottom row (rest pose), used by groundLock. The boots stand on different rows (perspective). Heel/toe points made the toe of the trailing boot dig in and lift the body 3-4 px, because the rig has no ankle.",
+    "lower_leg_R": [
+      [26, 119]
+    ],
+    "lower_leg_L": [
+      [52, 117]
+    ]
+  },
+  "reach": {
+    "note": "px from a stepping joint's pivot to the end of its limb (sole / hand), so `step` moves that end by exactly that many px.",
+    "upper_leg_R": 38,
+    "upper_leg_L": 38,
+    "upper_arm_R": 36,
+    "upper_arm_L": 36
+  },
+  "cut": {
+    "note": "Inclusive rects [x0, y0, x1, y1]. A pixel belongs to the first part (in this order) whose rects hold it; whatever is left belongs to `rest`.",
+    "order": [
+      "head",
+      "lower_arm_R",
+      "upper_arm_R",
+      "lower_arm_L",
+      "upper_arm_L",
+      "lower_leg_R",
+      "upper_leg_R",
+      "lower_leg_L",
+      "upper_leg_L"
+    ],
+    "rects": {
+      "head": [
+        [0, 0, 79, 36]
+      ],
+      "lower_arm_R": [
+        [0, 58, 29, 63],
+        [0, 64, 25, 80]
+      ],
+      "upper_arm_R": [
+        [0, 43, 30, 57]
+      ],
+      "lower_arm_L": [
+        [53, 59, 79, 63],
+        [54, 64, 79, 80]
+      ],
+      "upper_arm_L": [
+        [52, 42, 79, 58]
+      ],
+      "lower_leg_R": [
+        [0, 101, 40, 127]
+      ],
+      "upper_leg_R": [
+        [0, 81, 40, 100]
+      ],
+      "lower_leg_L": [
+        [41, 101, 79, 127]
+      ],
+      "upper_leg_L": [
+        [41, 81, 79, 100]
+      ]
+    },
+    "rest": "torso"
+  },
+  "overlap": {
+    "note": "Source pixels copied into a part although another part owns them, so a moving neighbour never opens a hole (cut-out animation's usual overlap).",
+    "torso": [
+      [24, 81, 56, 83],
+      [31, 33, 50, 36],
+      [52, 45, 52, 62]
+    ],
+    "upper_arm_R": [
+      [18, 58, 29, 59]
+    ],
+    "upper_arm_L": [
+      [53, 59, 61, 60]
+    ],
+    "upper_leg_R": [
+      [21, 101, 36, 102]
+    ],
+    "upper_leg_L": [
+      [42, 101, 56, 102]
+    ]
+  },
+  "fill": {
+    "note": "Hidden pixels drawn into a part where a moving limb covered it in the source: each row is filled from the part's own pixel just inside `from`, and `edge` gets the outline colour.",
+    "torso": [
+      {
+        "rect": [27, 46, 30, 62],
+        "from": "right",
+        "outline": "#080310"
+      }
+    ]
+  },
+  "variants": {
+    "default": {
+      "label": "Field jacket (shipped)"
+    },
+    "navy": {
+      "label": "Navy jacket + tan chinos (recolour test)",
+      "recolor": {
+        "#495242": "#3e5276",
+        "#2a3832": "#262f4a",
+        "#636f44": "#56709a",
+        "#4b4545": "#a2845c",
+        "#392c38": "#7e6446",
+        "#382b37": "#7a6044",
+        "#3c303b": "#8a6d4c",
+        "#201b27": "#4e3a2a"
+      }
+    }
+  },
+  "accessories": {
+    "beanie": {
+      "label": "Knit beanie",
+      "file": "accessories/beanie.png",
+      "joint": "head"
+    }
+  }
+}

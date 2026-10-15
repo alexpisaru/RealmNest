@@ -1,0 +1,61 @@
+// Logistics Port (128×64 pack): metadata of this world's own props. The art is in
+// src/render/hd4/packs/port. w/d footprint in tiles (defaults; placements set their
+// own), h = art height (base px) for picking and sprite bounds.
+import type { PropMeta } from '../props';
+
+export const PORT_META: Record<string, PropMeta> = {
+  // the quay's edge and furniture
+  prt_quaywall: { w: 1, d: 1, h: 4, solid: false },
+  prt_lamp: { w: 1, d: 1, h: 44 },
+  prt_mast: { w: 1, d: 1, h: 100 },
+  prt_fence: { w: 4, d: 1, h: 26 },
+  prt_lifebuoy: { w: 1, d: 1, h: 14 },
+  prt_nets: { w: 1, d: 1, h: 8 },
+  prt_netrack: { w: 3, d: 1, h: 18 },
+  prt_pots: { w: 1, d: 1, h: 12 },
+  prt_fishbox: { w: 1, d: 1, h: 10 },
+  prt_pallets: { w: 1, d: 1, h: 12 },
+  prt_drums: { w: 1, d: 1, h: 10 },
+  prt_cone: { w: 1, d: 1, h: 6 },
+  prt_buffer: { w: 1, d: 1, h: 6 },
+  prt_bin: { w: 1, d: 1, h: 6 },
+  prt_stall: { w: 2, d: 1, h: 14 },
+  prt_decal: { w: 1, d: 1, h: 2, solid: false, flat: true },
+  prt_mark: { w: 1, d: 1, h: 1, solid: false, flat: true },
+  prt_track: { w: 4, d: 1, h: 1, solid: false, flat: true },
+  prt_tree: { w: 1, d: 1, h: 58 },
+  prt_planter: { w: 2, d: 1, h: 10 },
+  // buildings
+  prt_warehouse: { w: 12, d: 9, h: 210 },
+  prt_market: { w: 12, d: 7, h: 110 },
+  prt_office: { w: 4, d: 4, h: 110 },
+  prt_gate: { w: 4, d: 5, h: 36 },
+  prt_skyline: { w: 20, d: 10, h: 130, solid: false, flat: true },
+  // the container terminal
+  prt_stack: { w: 12, d: 5, h: 110 },
+  prt_stsframe: { w: 1, d: 8, h: 190 },
+  prt_sts: { w: 6, d: 17, h: 380 },
+  prt_ship: { w: 18, d: 5, h: 110 },
+  prt_straddle: { w: 2, d: 3, h: 108 },
+  prt_truck: { w: 9, d: 2, h: 38 },
+  prt_car: { w: 2, d: 1, h: 16 },
+  prt_wagon: { w: 8, d: 2, h: 36 },
+  prt_train: { w: 30, d: 1, h: 36, solid: false },
+  // the water and the far shore
+  prt_trawler: { w: 5, d: 2, h: 60 },
+  prt_ferry: { w: 10, d: 3, h: 80 },
+  prt_tug: { w: 4, d: 2, h: 50 },
+  prt_sail: { w: 3, d: 1, h: 90 },
+  prt_dinghy: { w: 2, d: 1, h: 8 },
+  prt_launch: { w: 3, d: 2, h: 30 },
+  prt_buoy: { w: 1, d: 1, h: 14 },
+  prt_pontoon: { w: 12, d: 2, h: 16 },
+  prt_lighthouse: { w: 2, d: 2, h: 130 },
+  prt_tetrapods: { w: 6, d: 1, h: 14 },
+  prt_parapet: { w: 6, d: 1, h: 12 },
+  prt_coaster: { w: 16, d: 4, h: 110 },
+  prt_cliff: { w: 6, d: 3, h: 40 },
+  prt_cottage: { w: 3, d: 3, h: 50 },
+  prt_pine: { w: 1, d: 1, h: 60 },
+  prt_bush: { w: 1, d: 1, h: 10 },
+};

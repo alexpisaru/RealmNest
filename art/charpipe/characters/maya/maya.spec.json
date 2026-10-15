@@ -1,0 +1,29 @@
+{
+  "id": "maya",
+  "name": "Maya",
+  "role": "Researcher / Analyst",
+  "body": "standard",
+  "view": "se",
+  "outline": "#1b0810",
+  "skin": { "hl": "#ffd6a6", "base": "#f4b986", "shade": "#d98d5e", "deep": "#a95c43" },
+  "eyes": "#2f7f8c",
+  "mouth": "#9c4436",
+  "hair": {
+    "style": "long",
+    "colors": { "hl": "#6f4430", "base": "#4a2a20", "shade": "#311913", "deep": "#1f0d0c" }
+  },
+  "outfit": {
+    "id": "field",
+    "top": { "style": "open-jacket", "colors": { "hl": "#e0b55e", "base": "#c4943e", "shade": "#97692b", "deep": "#6a461d" } },
+    "shirt": { "colors": { "hl": "#fbf5e8", "base": "#ece2cd", "shade": "#c7b79c" } },
+    "trousers": { "colors": { "hl": "#46405a", "base": "#2f2b3d", "shade": "#211e2c" } },
+    "shoes": { "colors": { "hl": "#59413f", "base": "#33232a", "shade": "#1f1418" } }
+  },
+  "accessory": { "style": "round-glasses", "color": "#2a1418" },
+  "outfits": {
+    "lab": {
+      "note": "Alternative outfit: a light technical lab jacket. Only the jacket layers are redrawn.",
+      "top": { "style": "tech-jacket", "colors": { "hl": "#f4f7f6", "base": "#d6dedd", "shade": "#9fb0b1", "deep": "#6d7f83", "accent": "#2e9aa0" } }
+    }
+  }
+}

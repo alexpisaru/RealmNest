@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-files-report-pdf"
+description = "Enables the files_report_pdf command without any pre-configured scope."
+commands.allow = ["files_report_pdf"]
+
+[[permission]]
+identifier = "deny-files-report-pdf"
+description = "Denies the files_report_pdf command without any pre-configured scope."
+commands.deny = ["files_report_pdf"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-telegram-stop"
+description = "Enables the telegram_stop command without any pre-configured scope."
+commands.allow = ["telegram_stop"]
+
+[[permission]]
+identifier = "deny-telegram-stop"
+description = "Denies the telegram_stop command without any pre-configured scope."
+commands.deny = ["telegram_stop"]

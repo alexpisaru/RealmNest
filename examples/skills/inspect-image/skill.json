@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "realmnest-examples.inspect-image",
+  "name": "Inspect Image",
+  "description": "Open an image in PhotoCraft and report its size, mode and layers. Use when someone asks what an image contains or how it is built.",
+  "version": "1.0.0",
+  "author": "RealmNest examples",
+  "license": "MIT",
+  "requiresCapabilities": [],
+  "requiresTools": [
+    { "mcpServer": "photocraft", "tool": "doc_open" },
+    { "mcpServer": "photocraft", "tool": "doc_inspect" }
+  ],
+  "optionalTools": [],
+  "permissions": ["opens the image file you name (inside PhotoCraft's read root)", "reads the document structure; changes nothing"],
+  "tags": ["images", "photocraft"],
+  "examples": [
+    {
+      "title": "Size and layers",
+      "input": "Inspect gradient.png",
+      "procedure": "doc_open {path: \"gradient.png\"} → doc_inspect {} → answer with width × height, mode and the layer list, top to bottom"
+    }
+  ]
+}

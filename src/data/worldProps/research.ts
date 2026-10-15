@@ -1,0 +1,67 @@
+// Research (128×64 pack): metadata of the summit's own props (art in src/render/hd4/packs/research).
+// w/d footprint in tiles, h = art height (base units, 1 z ≈ 10 cm) for the sprite box and picking.
+import type { PropMeta } from '../props';
+
+export const RESEARCH_META: Record<string, PropMeta> = {
+  // the library's smaller treasures
+  res_planchest: { w: 2, d: 1, h: 12 },
+  res_telescope: { w: 1, d: 1, h: 26 },
+  res_orrery: { w: 1, d: 1, h: 18 },
+  res_trolley: { w: 1, d: 1, h: 14 },
+  res_stove: { w: 1, d: 1, h: 24 },
+  res_archboxes: { w: 1, d: 1, h: 10 },
+  // the observatory
+  res_dome: { w: 5, d: 5, h: 75 },
+  res_dish: { w: 5, d: 5, h: 95 },
+  res_weather: { w: 2, d: 2, h: 52 },
+  res_solar: { w: 2, d: 1, h: 12 },
+  res_hut: { w: 2, d: 2, h: 36 },
+  res_pier: { w: 1, d: 1, h: 22 },
+  // the buildings
+  res_lodge: { w: 10, d: 18, h: 110 },
+  res_chapel: { w: 3, d: 4, h: 70 },
+  res_station: { w: 4, d: 3, h: 42 },
+  res_pylon: { w: 2, d: 2, h: 165 },
+  res_cross: { w: 2, d: 2, h: 62 },
+  // plants and stones
+  res_spruce: { w: 1, d: 1, h: 130 },
+  res_larch: { w: 1, d: 1, h: 140 },
+  res_pine: { w: 1, d: 1, h: 100 },
+  res_snag: { w: 1, d: 1, h: 84 },
+  res_boulder: { w: 1, d: 1, h: 20 },
+  res_flowers: { w: 1, d: 1, h: 5, solid: false },
+  res_grass: { w: 1, d: 1, h: 7, solid: false },
+  res_shrub: { w: 1, d: 1, h: 12 },
+  res_cairn: { w: 1, d: 1, h: 16 },
+  // the rich alpine slope
+  res_steps: { w: 1, d: 1, h: 10, solid: false },
+  res_outcrop: { w: 2, d: 2, h: 40 },
+  res_falls: { w: 1, d: 1, h: 24 },
+  res_bloom: { w: 1, d: 1, h: 5, solid: false },
+  res_rhodo: { w: 1, d: 1, h: 16 },
+  res_hummock: { w: 1, d: 1, h: 6, solid: false },
+  // things people left
+  res_drywall: { w: 3, d: 1, h: 8 },
+  res_snowpole: { w: 1, d: 1, h: 24, solid: false },
+  res_signpost: { w: 1, d: 1, h: 24 },
+  res_bench: { w: 2, d: 1, h: 10 },
+  res_scope: { w: 1, d: 1, h: 16 },
+  res_railing: { w: 3, d: 1, h: 10 },
+  res_orient: { w: 1, d: 1, h: 12 },
+  res_jeep: { w: 2, d: 1, h: 22 },
+  res_woodpile: { w: 2, d: 1, h: 16 },
+  res_trough: { w: 2, d: 1, h: 14 },
+  res_table: { w: 2, d: 1, h: 10 },
+  res_lamp: { w: 1, d: 1, h: 20 },
+  res_windsock: { w: 1, d: 1, h: 30 },
+  res_gear: { w: 1, d: 1, h: 18, solid: false },
+  res_crates: { w: 1, d: 1, h: 12 },
+  res_snowcat: { w: 2, d: 1, h: 18 },
+  res_flag: { w: 1, d: 1, h: 80 },
+  res_planter: { w: 1, d: 1, h: 10 },
+  res_mast: { w: 1, d: 1, h: 132 },
+  res_timber: { w: 2, d: 1, h: 10 },
+  res_board: { w: 1, d: 1, h: 18 },
+  res_fence: { w: 3, d: 1, h: 12 },
+  res_decal: { w: 1, d: 1, h: 2, solid: false, flat: true },
+};

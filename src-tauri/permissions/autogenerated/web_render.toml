@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-web-render"
+description = "Enables the web_render command without any pre-configured scope."
+commands.allow = ["web_render"]
+
+[[permission]]
+identifier = "deny-web-render"
+description = "Denies the web_render command without any pre-configured scope."
+commands.deny = ["web_render"]

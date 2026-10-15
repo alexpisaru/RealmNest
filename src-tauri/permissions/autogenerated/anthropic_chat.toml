@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-anthropic-chat"
+description = "Enables the anthropic_chat command without any pre-configured scope."
+commands.allow = ["anthropic_chat"]
+
+[[permission]]
+identifier = "deny-anthropic-chat"
+description = "Denies the anthropic_chat command without any pre-configured scope."
+commands.deny = ["anthropic_chat"]

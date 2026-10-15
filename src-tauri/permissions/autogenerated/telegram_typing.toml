@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-telegram-typing"
+description = "Enables the telegram_typing command without any pre-configured scope."
+commands.allow = ["telegram_typing"]
+
+[[permission]]
+identifier = "deny-telegram-typing"
+description = "Denies the telegram_typing command without any pre-configured scope."
+commands.deny = ["telegram_typing"]

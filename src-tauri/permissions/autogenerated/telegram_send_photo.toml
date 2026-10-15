@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-telegram-send-photo"
+description = "Enables the telegram_send_photo command without any pre-configured scope."
+commands.allow = ["telegram_send_photo"]
+
+[[permission]]
+identifier = "deny-telegram-send-photo"
+description = "Denies the telegram_send_photo command without any pre-configured scope."
+commands.deny = ["telegram_send_photo"]

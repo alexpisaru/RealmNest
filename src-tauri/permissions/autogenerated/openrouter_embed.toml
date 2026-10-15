@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-openrouter-embed"
+description = "Enables the openrouter_embed command without any pre-configured scope."
+commands.allow = ["openrouter_embed"]
+
+[[permission]]
+identifier = "deny-openrouter-embed"
+description = "Denies the openrouter_embed command without any pre-configured scope."
+commands.deny = ["openrouter_embed"]

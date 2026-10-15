@@ -1,0 +1,19 @@
+{
+  "_comment": "Process protocol shared by the dev bridge (TypeScript) and the Tauri host (Rust). Both test suites check these exact shapes.",
+  "request": { "program": "claude", "args": ["--version"], "stdin": "hello", "timeoutMs": 20000 },
+  "messages": [
+    { "t": "spawn" },
+    { "t": "out", "d": "{\"type\":\"system\"}\n" },
+    { "t": "err", "d": "warn\n" },
+    { "t": "end", "end": { "kind": "exit", "code": 0, "signal": null } },
+    { "t": "end", "end": { "kind": "exit", "code": null, "signal": "killed" } },
+    { "t": "end", "end": { "kind": "timeout", "timeoutMs": 3000 } },
+    { "t": "end", "end": { "kind": "cancelled" } },
+    { "t": "end", "end": { "kind": "spawn_error", "code": "not_found", "message": "claude was not found" } },
+    { "t": "end", "end": { "kind": "spawn_error", "code": "denied", "message": "argument not allowed: --x" } }
+  ],
+  "locations": [
+    { "found": true, "path": "C:\\claude.exe", "source": "path" },
+    { "found": false }
+  ]
+}

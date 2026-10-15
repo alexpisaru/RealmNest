@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-compat-embedding-models"
+description = "Enables the compat_embedding_models command without any pre-configured scope."
+commands.allow = ["compat_embedding_models"]
+
+[[permission]]
+identifier = "deny-compat-embedding-models"
+description = "Denies the compat_embedding_models command without any pre-configured scope."
+commands.deny = ["compat_embedding_models"]

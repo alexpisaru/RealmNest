@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-skill-load"
+description = "Enables the skill_load command without any pre-configured scope."
+commands.allow = ["skill_load"]
+
+[[permission]]
+identifier = "deny-skill-load"
+description = "Denies the skill_load command without any pre-configured scope."
+commands.deny = ["skill_load"]

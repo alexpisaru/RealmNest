@@ -1,0 +1,40 @@
+{
+  "name": "realmnest-os",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "author": "Marius Alexandru Pisaru",
+  "version": "0.11.0-beta",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "tauri": "tauri",
+    "character:build": "vite-node tools/charpipe/build.ts",
+    "character:create": "vite-node tools/charpipe/create.ts",
+    "character:studio": "vite-node tools/charpipe/hd/studio.ts",
+    "character:cast": "vite-node tools/charpipe/cast/cast.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@tauri-apps/api": "^2.12.3",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.2",
+    "@types/node": "^24.19.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.9"
+  }
+}

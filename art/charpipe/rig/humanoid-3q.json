@@ -1,0 +1,76 @@
+{
+  "id": "nestra-humanoid-3q",
+  "description": "Cut-out rig for a Nestra figure in a three-quarter view (80x128 frame, feet on row 120). R/L are the character's own sides: in the se view R is on the image's left. Parts are full-frame transparent images, so every layer's local space equals frame space at rest. Depth follows the se view's geometry: the R limbs (image left, the boot lower on screen) are nearer the camera and drawn in front of the body; the L limbs behind it.",
+  "frame": {
+    "w": 80,
+    "h": 128
+  },
+  "foot": [40, 120],
+  "joints": [
+    {
+      "id": "root",
+      "kind": "null"
+    },
+    {
+      "id": "pelvis",
+      "kind": "null",
+      "parent": "root"
+    },
+    {
+      "id": "torso",
+      "parent": "pelvis"
+    },
+    {
+      "id": "head",
+      "parent": "torso"
+    },
+    {
+      "id": "upper_arm_R",
+      "parent": "torso"
+    },
+    {
+      "id": "lower_arm_R",
+      "parent": "upper_arm_R"
+    },
+    {
+      "id": "upper_arm_L",
+      "parent": "torso"
+    },
+    {
+      "id": "lower_arm_L",
+      "parent": "upper_arm_L"
+    },
+    {
+      "id": "upper_leg_R",
+      "parent": "pelvis"
+    },
+    {
+      "id": "lower_leg_R",
+      "parent": "upper_leg_R"
+    },
+    {
+      "id": "upper_leg_L",
+      "parent": "pelvis"
+    },
+    {
+      "id": "lower_leg_L",
+      "parent": "upper_leg_L"
+    }
+  ],
+  "drawOrder": [
+    "upper_arm_L",
+    "lower_arm_L",
+    "lower_leg_L",
+    "upper_leg_L",
+    "torso",
+    "head",
+    "lower_leg_R",
+    "upper_leg_R",
+    "upper_arm_R",
+    "lower_arm_R"
+  ],
+  "groundSlope": {
+    "se": 0.5,
+    "ne": -0.5
+  }
+}

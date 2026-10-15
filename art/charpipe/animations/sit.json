@@ -1,0 +1,23 @@
+{
+  "id": "sit",
+  "label": "Sit: on a sofa, an armchair or a bench",
+  "frames": 8,
+  "fps": 6,
+  "loop": true,
+  "note": "Seated, facing the view (se). The thighs turn 63° forward, which in this view is the ground diagonal (2:1), so they read as horizontal and coming toward the viewer; the shins turn back to vertical so the feet rest on the floor in front of the seat. The hips drop 18 px (to a seat about a shin high). Everything is lifted 6 px (root) so the feet stay inside the 128-px frame: the seat point is then at y 114 (anchorDy). Hands rest on the thighs. The near thigh draws over the far one, both over the torso (the lap). A 1 px breath; the head and arms ride on the torso.",
+  "anchorDy": -6,
+  "drawOrder": ["upper_arm_L", "lower_arm_L", "torso", "head", "lower_leg_L", "upper_leg_L", "lower_leg_R", "upper_leg_R", "upper_arm_R", "lower_arm_R"],
+  "tracks": {
+    "root": { "dy": [-6, -6, -6, -6, -6, -6, -6, -6] },
+    "pelvis": { "dy": [18, 18, 18, 18, 18, 18, 18, 18] },
+    "torso": { "dy": [0, 0, 1, 1, 1, 1, 0, 0] },
+    "upper_leg_R": { "rot": [-63, -63, -63, -63, -63, -63, -63, -63] },
+    "lower_leg_R": { "rot": [63, 63, 63, 63, 63, 63, 63, 63] },
+    "upper_leg_L": { "rot": [-63, -63, -63, -63, -63, -63, -63, -63] },
+    "lower_leg_L": { "rot": [63, 63, 63, 63, 63, 63, 63, 63] },
+    "upper_arm_R": { "rot": [-8, -8, -8, -8, -8, -8, -8, -8] },
+    "lower_arm_R": { "rot": [-24, -24, -24, -24, -24, -24, -24, -24] },
+    "upper_arm_L": { "rot": [2, 2, 2, 2, 2, 2, 2, 2] },
+    "lower_arm_L": { "rot": [-12, -12, -12, -12, -12, -12, -12, -12] }
+  }
+}

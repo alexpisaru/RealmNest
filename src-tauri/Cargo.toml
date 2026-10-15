@@ -1,0 +1,39 @@
+[package]
+name = "realmnest-os"
+version = "0.11.0"
+license = "AGPL-3.0-or-later"
+authors = ["Marius Alexandru Pisaru"]
+description = "RealmNest OS — a visual operating environment for AI agents"
+edition = "2021"
+
+[lib]
+name = "realmnest_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# connection secrets (API keys, tokens) in the OS credential store, never in app storage
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
+# OpenRouter: HTTPS only, rustls, no redirects (see src/openrouter); requests run on the Tauri tokio runtime
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+tokio = { version = "1", features = ["sync", "macros", "time", "rt", "rt-multi-thread", "net"] }
+# web layer: URL hosts (already in the tree through reqwest)
+url = "2"
+# OAuth for remote MCP servers (PKCE): already in Cargo.lock
+sha2 = "0.10"
+getrandom = "0.2"
+base64 = "0.22"
+# Phase 2: persistence
+# tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+
+# Job objects: kill a process and all its descendants, even if RealmNest crashes
+[target.'cfg(windows)'.dependencies]
+# the hidden page reader (WebView2): the same versions Tauri already uses
+webview2-com = "0.39.1"
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_Security_Cryptography", "Win32_UI_Controls_Dialogs", "Win32_UI_Shell", "Win32_System_Com"] }

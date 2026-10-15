@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-telegram-send-document"
+description = "Enables the telegram_send_document command without any pre-configured scope."
+commands.allow = ["telegram_send_document"]
+
+[[permission]]
+identifier = "deny-telegram-send-document"
+description = "Denies the telegram_send_document command without any pre-configured scope."
+commands.deny = ["telegram_send_document"]

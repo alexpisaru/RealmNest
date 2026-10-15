@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-compat-cancel"
+description = "Enables the compat_cancel command without any pre-configured scope."
+commands.allow = ["compat_cancel"]
+
+[[permission]]
+identifier = "deny-compat-cancel"
+description = "Denies the compat_cancel command without any pre-configured scope."
+commands.deny = ["compat_cancel"]

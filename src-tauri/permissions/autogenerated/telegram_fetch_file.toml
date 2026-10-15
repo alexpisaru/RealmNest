@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-telegram-fetch-file"
+description = "Enables the telegram_fetch_file command without any pre-configured scope."
+commands.allow = ["telegram_fetch_file"]
+
+[[permission]]
+identifier = "deny-telegram-fetch-file"
+description = "Denies the telegram_fetch_file command without any pre-configured scope."
+commands.deny = ["telegram_fetch_file"]

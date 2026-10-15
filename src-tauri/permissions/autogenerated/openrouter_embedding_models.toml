@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-openrouter-embedding-models"
+description = "Enables the openrouter_embedding_models command without any pre-configured scope."
+commands.allow = ["openrouter_embedding_models"]
+
+[[permission]]
+identifier = "deny-openrouter-embedding-models"
+description = "Denies the openrouter_embedding_models command without any pre-configured scope."
+commands.deny = ["openrouter_embedding_models"]

@@ -1,0 +1,25 @@
+{
+  "id": "work",
+  "label": "Work: typing at a desk",
+  "frames": 4,
+  "fps": 6,
+  "loop": true,
+  "note": "Standing at a workstation: upper arms slightly forward, forearms raised to the keyboard and alternating; a 1 px head nod. The near (R) forearm crosses in front of the body by the rig's own draw order.",
+  "tracks": {
+    "upper_arm_R": {
+      "rot": [-8, -8, -8, -8]
+    },
+    "lower_arm_R": {
+      "rot": [-40, -34, -40, -44]
+    },
+    "upper_arm_L": {
+      "rot": [-6, -6, -6, -6]
+    },
+    "lower_arm_L": {
+      "rot": [-46, -44, -38, -44]
+    },
+    "head": {
+      "dy": [0, 0, 1, 0]
+    }
+  }
+}

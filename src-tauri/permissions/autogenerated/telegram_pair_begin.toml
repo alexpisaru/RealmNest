@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-telegram-pair-begin"
+description = "Enables the telegram_pair_begin command without any pre-configured scope."
+commands.allow = ["telegram_pair_begin"]
+
+[[permission]]
+identifier = "deny-telegram-pair-begin"
+description = "Denies the telegram_pair_begin command without any pre-configured scope."
+commands.deny = ["telegram_pair_begin"]

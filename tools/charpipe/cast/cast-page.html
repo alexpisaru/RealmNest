@@ -1,0 +1,366 @@
+<title>RealmNest Cast Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* A workbench: the stage (the character on a floor tile, whole-pixel zoom) beside the character
+   sheet, the same controls as the app's character creator. Dark-first, RealmNest's palette. */
+:root {
+  --bg: #100e12; --panel: #1c181e; --panel-2: #26212a;
+  --line: rgba(255, 236, 214, 0.10); --line-2: rgba(255, 236, 214, 0.20);
+  --text: #f3e9dc; --text-2: #cbbfb1; --muted: #8f8478;
+  --accent: #f2b98a; --accent-ink: #2a1a10;
+  --stage: #2b2630; --floor: #4a4152; --floor-2: #554b5e; --bench: #6b4f3a; --bench-2: #8a6a4e; --bench-3: #4f3a2b;
+  --display: 'Fraunces', Georgia, serif; --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f4ede4; --panel: #fbf7f1; --panel-2: #efe6da; --line: rgba(60, 38, 22, 0.12); --line-2: rgba(60, 38, 22, 0.24);
+    --text: #2a1c14; --text-2: #5a4636; --muted: #8a7462; --accent: #c4703e; --accent-ink: #fff7ef;
+    --stage: #e6dccf; --floor: #cbbba8; --floor-2: #d6c7b5; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f4ede4; --panel: #fbf7f1; --panel-2: #efe6da; --line: rgba(60, 38, 22, 0.12); --line-2: rgba(60, 38, 22, 0.24);
+  --text: #2a1c14; --text-2: #5a4636; --muted: #8a7462; --accent: #c4703e; --accent-ink: #fff7ef;
+  --stage: #e6dccf; --floor: #cbbba8; --floor-2: #d6c7b5; color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); padding: 20px 16px 28px; }
+.app { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px; align-items: start; }
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+h1 { font: 650 28px/1.1 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 13px; }
+.mono { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+.stagewrap { display: flex; flex-direction: column; gap: 10px; min-width: 0; position: sticky; top: 12px; }
+.stage { background: var(--stage); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; justify-content: center; }
+.stage canvas { display: block; max-width: 100%; height: auto; image-rendering: pixelated; }
+.stagebar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; color: var(--text-2); font-size: 12px; }
+.stagebar .spacer { flex: 1; }
+.strip { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+.strip button { padding: 0; border: 1px solid var(--line); background: var(--stage); border-radius: 8px; cursor: pointer; flex: 0 0 auto; }
+.strip button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.strip canvas { display: block; width: 40px; height: 64px; image-rendering: pixelated; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.group { display: flex; flex-direction: column; gap: 7px; }
+.group > .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button, .btn { font: 500 12.5px var(--sans); color: var(--text-2); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 5px 10px; cursor: pointer; }
+.seg button:hover, .btn:hover { border-color: var(--line-2); color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.sw { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line-2); cursor: pointer; padding: 0; }
+.sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
+.presets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.presets button { padding: 2px 0 4px; border: 1px solid var(--line); background: var(--stage); border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-2); font-size: 10px; }
+.presets button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.presets canvas { width: 40px; height: 48px; image-rendering: pixelated; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+select { font: 500 13px var(--sans); color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 6px 8px; width: 100%; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+input[type="range"] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+.check { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13px; }
+.stack { font: 12px/1.6 var(--mono); color: var(--text-2); margin: 0; padding: 10px 12px; background: var(--panel-2); border-radius: 9px; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+.stack .band { color: var(--muted); }
+.note { color: var(--muted); font-size: 12px; margin: 0; }
+details summary { cursor: pointer; color: var(--text-2); font-size: 12px; }
+@media (max-width: 900px) { .app { grid-template-columns: minmax(0, 1fr); } .stagewrap { position: static; } .presets { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+</style>
+
+<div class="app">
+  <header>
+    <h1>RealmNest Cast Studio</h1>
+    <span class="sub">Il modello di Maya e Teo per tutti · <span class="mono">80×128</span>, piedi <span class="mono">(40, 120)</span> · disegnato in PhotoCraft, animato in EffectCraft · ogni pezzo si compone e si ricolora dal vivo</span>
+  </header>
+
+  <section class="stagewrap" aria-label="Anteprima">
+    <div class="stage"><canvas id="stage" width="480" height="420"></canvas></div>
+    <div class="stagebar">
+      <span id="info" class="mono"></span>
+      <span class="spacer"></span>
+      <button class="btn" id="dir" type="button">Verso: destra</button>
+      <button class="btn" id="play" type="button">Pausa</button>
+      <button class="btn" id="prev" type="button" aria-label="Fotogramma precedente">‹</button>
+      <button class="btn" id="next" type="button" aria-label="Fotogramma successivo">›</button>
+    </div>
+    <div class="strip" id="strip" aria-label="Fotogrammi"></div>
+    <div class="group">
+      <div class="label">Pila dei livelli (dietro → davanti)</div>
+      <pre class="stack" id="stack"></pre>
+    </div>
+  </section>
+
+  <aside class="panel" aria-label="Personaggio">
+    <div class="group"><div class="label">Preset</div><div class="presets" id="presets"></div></div>
+    <div class="group"><div class="label">Animazione</div><div class="seg" id="anims"></div></div>
+    <div class="group"><div class="label">Corpo</div><div class="seg" id="kind"></div><div class="seg" id="build"></div><div class="seg" id="height"></div></div>
+    <div class="group"><div class="label">Pelle</div><div class="swatches" id="skin"></div></div>
+    <div class="group"><div class="label">Capelli</div><div class="seg" id="hair"></div><div class="swatches" id="hairColor"></div></div>
+    <div class="two">
+      <div class="group"><div class="label">Occhi</div><div class="swatches" id="eyes"></div></div>
+      <div class="group"><div class="label">Colore personale</div><div class="swatches" id="sig"></div></div>
+    </div>
+    <div class="group"><div class="label">Viso</div><div class="seg" id="facial"></div><div class="seg" id="glasses"></div><label class="check"><input type="checkbox" id="freckles"> Lentiggini</label></div>
+    <div class="group"><div class="label">Accessorio</div><div class="seg" id="accessory"></div></div>
+    <div class="group">
+      <div class="label">Outfit</div>
+      <select id="world" aria-label="Mondo"></select>
+      <div class="seg" id="outfits"></div>
+      <div class="seg" id="variants"></div>
+    </div>
+    <div class="two">
+      <div class="group"><div class="label"><span>Velocità</span><span id="speedv" class="mono">1.00×</span></div><input id="speed" type="range" min="0.25" max="2" step="0.05" value="1" aria-label="Velocità"></div>
+      <div class="group"><div class="label"><span>Zoom</span><span id="zoomv" class="mono">3×</span></div><input id="zoom" type="range" min="1" max="5" step="1" value="3" aria-label="Zoom"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="anchor"> Mostra punto d'appoggio</label>
+    <p class="note">Ogni pezzo (capelli, vestiti, copricapi, accessori) è disegnato una volta per ciascuna forma di corpo e animato con lo stesso rig; i colori sono quelli dell'app, applicati dal vivo.</p>
+  </aside>
+</div>
+
+<script>/*__CAST_API__*/</script>
+<script>
+const DATA = /*__DATA__*/null;
+const M = DATA.manifest;
+const W = M.frame.w, H = M.frame.h;
+const ANIM_NAMES = { idle: 'Fermo', walk: 'Cammina', work: 'Lavora', sit: 'Seduto' };
+const KIND_NAMES = [['masc', 'Uomo'], ['fem', 'Donna'], ['neutral', 'Neutro']];
+const BUILD_NAMES = [['slim', 'Snello'], ['regular', 'Medio'], ['broad', 'Robusto']];
+const HEIGHT_NAMES = [['short', 'Basso'], ['regular', 'Medio'], ['tall', 'Alto']];
+const HAIR_NAMES = { mane: 'Criniera', tousled: 'Spettinati', crew: 'Corti', spiky: 'A punta', shaved: 'Rasati', bun: 'Chignon', curly: 'Ricci', afro: 'Afro', ponytail: 'Coda', undercut: 'Undercut', bob: 'Caschetto', braids: 'Treccine', long: 'Lunghi' };
+const FACIAL = [['', 'Niente barba'], ['stubble', 'Barba corta'], ['mustache', 'Baffi'], ['beard', 'Barba']];
+const GLASSES = [['', 'Niente occhiali'], ['round', 'Tondi'], ['square', 'Squadrati']];
+const ACCESSORY = [['none', 'Nessuno'], ['headphones', 'Cuffie'], ['flower', 'Fiore'], ['scarf', 'Sciarpa']];
+
+const first = Cast.PRESETS[0];
+const state = { preset: first.id, profile: { ...first.profile }, signature: first.signature, world: DATA.worlds[0].id, outfit: first.outfitId || DATA.worlds[0].defaultOutfit, variant: '', anim: 'walk', speed: 1, zoom: 3, playing: true, frame: 0, t: 0, mirror: false, anchor: false };
+delete state.profile.art;
+try { const s = JSON.parse(localStorage.getItem('nestra-cast') || 'null'); if (s) Object.assign(state, s, { playing: true, t: 0, frame: 0 }); } catch (e) {}
+const save = () => { try { const { t, frame, playing, ...keep } = state; localStorage.setItem('nestra-cast', JSON.stringify(keep)); } catch (e) {} };
+
+// ── images, recolouring, compositing ──
+const atlases = {};
+function atlas(name) { if (!atlases[name]) { const im = new Image(); im.src = DATA.atlases[name]; atlases[name] = im; } return atlases[name]; }
+const crops = new Map();
+const rampMaps = new Map();
+function colourMap(la) {
+  const key = la.asset + JSON.stringify(la.colors);
+  if (rampMaps.has(key)) return rampMaps.get(key);
+  const map = new Map();
+  for (const [m, c] of Object.entries(la.colors)) {
+    if (!c || !M.canon[m]) continue;
+    const r = Cast.rampFor(m, c);
+    for (const t of Cast.TONES) map.set(parseInt(M.canon[m][t].slice(1), 16), parseInt(r[t].slice(1), 16));
+  }
+  rampMaps.set(key, map);
+  return map;
+}
+/** one frame's crop of one asset, recoloured to the wearer's colours */
+function crop(shape, la, e) {
+  const [ai, sx, sy, w, h] = e;
+  const key = `${shape}|${ai}|${sx},${sy}|${la.asset}${JSON.stringify(la.colors)}`;
+  if (crops.has(key)) return crops.get(key);
+  const im = atlas(M.shapes[shape].atlases[ai]);
+  if (!im.complete || !im.naturalWidth) return null;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.drawImage(im, sx, sy, w, h, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h), p = d.data, map = colourMap(la);
+  for (let i = 0; i < p.length; i += 4) {
+    if (!p[i + 3]) continue;
+    const to = map.get((p[i] << 16) | (p[i + 1] << 8) | p[i + 2]);
+    if (to !== undefined) { p[i] = to >> 16; p[i + 1] = (to >> 8) & 255; p[i + 2] = to & 255; }
+  }
+  x.putImageData(d, 0, 0);
+  crops.set(key, c);
+  return c;
+}
+function look() { const l = Cast.castLookFor(state.profile, state.signature, state.outfit, state.variant || undefined); return l; }
+const animDef = (id) => M.anims.find((a) => a.id === id);
+/** one composited frame: band by band (the animation's own order), each band's assets in slot order */
+function drawFrame(ctx, L, anim, f, ox, oy, z, mirror) {
+  const shape = `${L.shape.kind}-${L.shape.build}`;
+  const S = M.shapes[shape];
+  if (!S) return;
+  const hDy = M.heightDy[L.shape.height];
+  for (const band of M.bandOrder[anim] || M.bandOrder.default)
+    for (const la of L.assets) {
+      const fr = S.frames[la.asset] && S.frames[la.asset][band];
+      if (!fr) continue;
+      const leg = M.legBands.includes(band);
+      const list = leg ? fr[L.shape.height] : fr.all;
+      const e = list && list[anim] && list[anim][f];
+      if (!e) continue;
+      const c = crop(shape, la, e);
+      if (!c) continue;
+      const [, , , w, h, dx, dy] = e;
+      const y = oy + (dy + (leg ? 0 : hDy)) * z;
+      if (mirror) { ctx.save(); ctx.translate(ox + (W - dx) * z, y); ctx.scale(-1, 1); ctx.drawImage(c, 0, 0, w * z, h * z); ctx.restore(); }
+      else ctx.drawImage(c, ox + dx * z, y, w * z, h * z);
+    }
+}
+
+// ── stage ──
+const stage = document.getElementById('stage');
+const sctx = stage.getContext('2d');
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function floor(ctx, cx, cy, z) {
+  const hw = 44 * z, hh = 22 * z;
+  ctx.fillStyle = css('--floor');
+  for (let i = 0; i < hh; i += z) { const w = Math.round((hw * (i / hh)) / z) * z; ctx.fillRect(cx - w, cy - hh + i, w * 2, z); ctx.fillRect(cx - w, cy + hh - i - z, w * 2, z); }
+  ctx.globalAlpha = 0.22; ctx.fillStyle = '#1a0e14';
+  for (let j = -2; j <= 2; j++) { const w = Math.round(Math.sqrt(1 - (j / 3) ** 2) * 13) * z; ctx.fillRect(cx - w, cy + j * z - z, w * 2, z); }
+  ctx.globalAlpha = 1;
+}
+/** a plain bench for the seated pose: the seat at hip height, behind the figure */
+function bench(ctx, cx, cy, z, mirror) {
+  const s = mirror ? -1 : 1;
+  const top = cy - 14 * z;
+  ctx.fillStyle = css('--bench-2'); ctx.fillRect(cx - 18 * z, top, 36 * z, 4 * z);
+  ctx.fillStyle = css('--bench'); ctx.fillRect(cx - 18 * z, top + 4 * z, 36 * z, 5 * z);
+  ctx.fillStyle = css('--bench-3'); ctx.fillRect(cx - 16 * z, top + 9 * z, 3 * z, 9 * z); ctx.fillRect(cx + 13 * z, top + 9 * z, 3 * z, 9 * z);
+  ctx.fillStyle = css('--bench'); ctx.fillRect(cx - 18 * z - s * 2 * z, top - 18 * z, 36 * z, 4 * z);
+}
+function render() {
+  const z = state.zoom;
+  const cw = (W + 40) * z, ch = (H + 20) * z;
+  if (stage.width !== cw || stage.height !== ch) { stage.width = cw; stage.height = ch; }
+  sctx.imageSmoothingEnabled = false;
+  sctx.fillStyle = css('--stage'); sctx.fillRect(0, 0, cw, ch);
+  const cx = cw / 2, fy = (M.anchor.y + 2) * z;
+  floor(sctx, cx, fy, z);
+  const a = animDef(state.anim);
+  const sit = state.anim === 'sit';
+  if (sit) bench(sctx, cx, fy, z, state.mirror);
+  // a seated frame is anchored at the seat point, 8 px under it, as in the world
+  const ay = sit ? M.anchor.y + a.anchorDy - 8 : M.anchor.y;
+  drawFrame(sctx, look(), state.anim, state.frame, cx - M.anchor.x * z, fy - ay * z, z, state.mirror);
+  if (state.anchor) { sctx.fillStyle = '#ef6a5a'; sctx.fillRect(cx - z, fy - 3 * z, 2 * z, 6 * z); sctx.fillRect(cx - 3 * z, fy - z, 6 * z, 2 * z); }
+}
+
+// ── frame strip ──
+const strip = document.getElementById('strip');
+function buildStrip() {
+  const a = animDef(state.anim);
+  strip.innerHTML = '';
+  for (let f = 0; f < a.frames; f++) {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', `Fotogramma ${f + 1}`);
+    const c = document.createElement('canvas'); c.width = W; c.height = H; b.appendChild(c);
+    b.addEventListener('click', () => { state.playing = false; state.frame = f; syncPlay(); paintStrip(); });
+    strip.appendChild(b);
+  }
+  paintStrip();
+}
+function paintStrip() {
+  const L = look();
+  [...strip.children].forEach((b, f) => {
+    const c = b.firstChild, x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.clearRect(0, 0, W, H);
+    drawFrame(x, L, state.anim, f, 0, 0, 1, state.mirror);
+    b.setAttribute('aria-pressed', String(f === state.frame));
+  });
+}
+
+// ── panel ──
+const el = (tag, props = {}) => Object.assign(document.createElement(tag), props);
+function seg(id, items, current, onPick) {
+  const host = document.getElementById(id); host.innerHTML = '';
+  for (const [v, label] of items) {
+    const b = el('button', { type: 'button', textContent: label }); b.setAttribute('aria-pressed', String(v === current));
+    b.addEventListener('click', () => { onPick(v); refresh(); }); host.appendChild(b);
+  }
+}
+function swatches(id, colours, current, onPick, names) {
+  const host = document.getElementById(id); host.innerHTML = '';
+  colours.forEach((c, i) => {
+    const b = el('button', { type: 'button', className: 'sw', title: names ? names[i] : c }); b.style.background = c;
+    b.setAttribute('aria-label', names ? names[i] : c); b.setAttribute('aria-pressed', String(c.toLowerCase() === (current || '').toLowerCase()));
+    b.addEventListener('click', () => { onPick(c); refresh(); }); host.appendChild(b);
+  });
+}
+function applyPreset(p) {
+  state.preset = p.id; state.profile = { ...p.profile }; delete state.profile.art; state.signature = p.signature;
+  if (p.outfitId) { state.outfit = p.outfitId; state.world = p.outfitId.split('.')[0] === 'universal' ? state.world : p.outfitId.split('.')[0]; }
+  state.variant = '';
+}
+function buildPresets() {
+  const host = document.getElementById('presets'); host.innerHTML = '';
+  for (const p of Cast.PRESETS) {
+    const b = el('button', { type: 'button', title: p.label }); b.setAttribute('aria-pressed', String(state.preset === p.id));
+    const c = el('canvas'); c.width = 80; c.height = 96; b.appendChild(c);
+    b.appendChild(el('span', { textContent: p.label.split(' ')[0] }));
+    b.addEventListener('click', () => { applyPreset(p); refresh(); });
+    host.appendChild(b);
+    const prof = { ...p.profile }; delete prof.art;
+    const L = Cast.castLookFor(prof, p.signature, p.outfitId || state.outfit);
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false; drawFrame(x, L, 'idle', 0, 0, -2, 1, false);
+  }
+}
+function buildPanel() {
+  const P = state.profile;
+  const set = (k) => (v) => { P[k] = v; state.preset = ''; };
+  seg('anims', M.anims.map((a) => [a.id, ANIM_NAMES[a.id] || a.id]), state.anim, (v) => { state.anim = v; state.frame = 0; state.t = 0; buildStrip(); });
+  seg('kind', KIND_NAMES, P.body, set('body'));
+  seg('build', BUILD_NAMES, P.build, set('build'));
+  seg('height', HEIGHT_NAMES, P.height, set('height'));
+  const tones = Object.entries(Cast.SKIN_TONES);
+  swatches('skin', tones.map(([, t]) => t.base), Cast.SKIN_TONES[P.skin].base, (c) => { P.skin = tones.find(([, t]) => t.base === c)[0]; state.preset = ''; }, tones.map(([k]) => k));
+  seg('hair', DATA.hairStyles.map((h) => [h, HAIR_NAMES[h] || h]), P.hair, set('hair'));
+  swatches('hairColor', Cast.HAIR_COLORS, P.hairColor, set('hairColor'));
+  swatches('eyes', Cast.EYE_COLORS, P.eyeColor, set('eyeColor'));
+  swatches('sig', Cast.SIGNATURE_COLORS, state.signature, (c) => { state.signature = c; state.preset = ''; });
+  seg('facial', FACIAL, P.facialHair || '', (v) => { P.facialHair = v || undefined; state.preset = ''; });
+  seg('glasses', GLASSES, P.glasses || '', (v) => { P.glasses = v || undefined; state.preset = ''; });
+  const fr = document.getElementById('freckles'); fr.checked = !!P.freckles; fr.onchange = () => { P.freckles = fr.checked || undefined; refresh(); };
+  seg('accessory', ACCESSORY, P.accessory || 'none', (v) => { P.accessory = v; state.preset = ''; });
+  const world = document.getElementById('world');
+  if (!world.options.length) { for (const w of DATA.worlds) world.appendChild(el('option', { value: w.id, textContent: w.name })); world.onchange = () => { state.world = world.value; state.outfit = DATA.worlds.find((w) => w.id === state.world).defaultOutfit; state.variant = ''; refresh(); }; }
+  world.value = state.world;
+  const list = Cast.outfitsForWorld(state.world);
+  seg('outfits', list.map((o) => [o.id, o.name]), state.outfit, (v) => { state.outfit = v; state.variant = ''; });
+  const o = Cast.OUTFITS.find((x) => x.id === state.outfit);
+  const vs = o && o.variants ? [['', 'Base'], ...o.variants.map((v) => [v.id, v.name])] : [];
+  seg('variants', vs, state.variant, (v) => { state.variant = v; });
+  for (const b of document.querySelectorAll('#presets button')) b.setAttribute('aria-pressed', String(b.title === (Cast.PRESETS.find((p) => p.id === state.preset) || {}).label));
+  // what is drawn, band by band
+  const L = look(), S = M.shapes[`${L.shape.kind}-${L.shape.build}`];
+  const lines = [];
+  for (const band of M.bandOrder[state.anim] || M.bandOrder.default) {
+    const here = L.assets.filter((a) => S && S.frames[a.asset] && S.frames[a.asset][band]);
+    if (here.length) lines.push(`<span class="band">${band.padEnd(6)}</span> ${here.map((a) => (M.assets[a.asset] || { label: a.asset }).label).join(' · ')}`);
+  }
+  const missing = L.assets.filter((a) => !S || !S.frames[a.asset]).map((a) => a.asset);
+  document.getElementById('stack').innerHTML = lines.join('\n') + (missing.length ? `\n<span class="band">mancano</span> ${missing.join(', ')}` : '');
+}
+function syncPlay() { document.getElementById('play').textContent = state.playing ? 'Pausa' : 'Riproduci'; }
+function refresh() { buildPanel(); paintStrip(); render(); save(); }
+
+document.getElementById('play').addEventListener('click', () => { state.playing = !state.playing; syncPlay(); });
+document.getElementById('dir').addEventListener('click', () => { state.mirror = !state.mirror; document.getElementById('dir').textContent = state.mirror ? 'Verso: sinistra' : 'Verso: destra'; refresh(); });
+const step = (d) => { const a = animDef(state.anim); state.playing = false; state.frame = (state.frame + d + a.frames) % a.frames; syncPlay(); paintStrip(); render(); };
+document.getElementById('prev').addEventListener('click', () => step(-1));
+document.getElementById('next').addEventListener('click', () => step(1));
+const speed = document.getElementById('speed'); speed.value = state.speed;
+speed.addEventListener('input', () => { state.speed = +speed.value; document.getElementById('speedv').textContent = state.speed.toFixed(2) + '×'; save(); });
+const zoom = document.getElementById('zoom'); zoom.value = state.zoom;
+zoom.addEventListener('input', () => { state.zoom = +zoom.value; document.getElementById('zoomv').textContent = state.zoom + '×'; render(); save(); });
+const anchor = document.getElementById('anchor'); anchor.checked = state.anchor;
+anchor.addEventListener('change', () => { state.anchor = anchor.checked; render(); save(); });
+document.getElementById('speedv').textContent = state.speed.toFixed(2) + '×';
+document.getElementById('zoomv').textContent = state.zoom + '×';
+document.getElementById('dir').textContent = state.mirror ? 'Verso: sinistra' : 'Verso: destra';
+
+let last = performance.now();
+function tick(now) {
+  const a = animDef(state.anim);
+  if (state.playing) {
+    state.t += Math.min(0.1, (now - last) / 1000) * state.speed;
+    const f = Math.floor(state.t * a.fps) % a.frames;
+    if (f !== state.frame) { state.frame = f; paintStrip(); }
+  }
+  last = now;
+  document.getElementById('info').textContent = `${ANIM_NAMES[a.id] || a.id} · ${a.frames} fotogrammi a ${a.fps} fps · ${state.frame + 1}/${a.frames}`;
+  render();
+  requestAnimationFrame(tick);
+}
+Promise.all(Object.keys(DATA.atlases).map((n) => new Promise((ok) => { const im = atlas(n); if (im.complete) ok(); else { im.onload = ok; im.onerror = ok; } }))).then(() => { buildPresets(); buildStrip(); refresh(); syncPlay(); requestAnimationFrame(tick); });
+</script>

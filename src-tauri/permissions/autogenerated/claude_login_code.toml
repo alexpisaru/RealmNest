@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-claude-login-code"
+description = "Enables the claude_login_code command without any pre-configured scope."
+commands.allow = ["claude_login_code"]
+
+[[permission]]
+identifier = "deny-claude-login-code"
+description = "Denies the claude_login_code command without any pre-configured scope."
+commands.deny = ["claude_login_code"]

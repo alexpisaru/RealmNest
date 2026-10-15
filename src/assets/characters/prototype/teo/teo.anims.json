@@ -1,0 +1,72 @@
+{
+  "id": "teo",
+  "name": "Teo",
+  "generator": "tools/charpipe/build.ts (EffectCraft)",
+  "effectcraft": "effectcraft-cli 0.8.0",
+  "rig": "nestra-humanoid-3q",
+  "view": "se",
+  "frameWidth": 80,
+  "frameHeight": 128,
+  "anchor": {
+    "x": 40,
+    "y": 120
+  },
+  "layout": "horizontal strip, no padding, frame i at x = i * frameWidth",
+  "modes": {
+    "x1": "parts rendered at 1×, Draft (nearest-neighbour) layers",
+    "rotsprite": "parts enlarged 8× with Scale2x, rendered at 8×, sampled back (RotSprite)"
+  },
+  "outfits": {
+    "tech": "tech-jacket (tech)"
+  },
+  "accessories": {},
+  "animations": [
+    {
+      "id": "idle",
+      "label": "Idle: breathing",
+      "frames": 8,
+      "fps": 8,
+      "loop": true
+    },
+    {
+      "id": "walk",
+      "label": "Walk (se), stepping along the ground",
+      "frames": 8,
+      "fps": 12,
+      "loop": true
+    },
+    {
+      "id": "work",
+      "label": "Work: typing at a desk",
+      "frames": 4,
+      "fps": 6,
+      "loop": true
+    },
+    {
+      "id": "sit",
+      "label": "Sit: on a sofa, an armchair or a bench",
+      "frames": 8,
+      "fps": 6,
+      "loop": true,
+      "anchorDy": -6
+    }
+  ],
+  "sheets": {
+    "x1": {
+      "tech": {
+        "idle": "x1/tech/idle.png",
+        "walk": "x1/tech/walk.png",
+        "work": "x1/tech/work.png",
+        "sit": "x1/tech/sit.png"
+      }
+    },
+    "rotsprite": {
+      "tech": {
+        "idle": "rotsprite/tech/idle.png",
+        "walk": "rotsprite/tech/walk.png",
+        "work": "rotsprite/tech/work.png",
+        "sit": "rotsprite/tech/sit.png"
+      }
+    }
+  }
+}

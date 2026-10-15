@@ -1,0 +1,82 @@
+{
+  "id": "giulia",
+  "name": "Giulia (office, cast sheet)",
+  "rig": "humanoid-3q",
+  "view": "se",
+  "source": {
+    "file": "source/giulia_se.png",
+    "note": "A copy of the se standing cell (row 2, column 1) of docs/characters/cast/office_sheet.png, hair included. Second character for the rig-reuse test: different proportions, an A-pose, the far arm mostly hidden."
+  },
+  "pivots": {
+    "root": [40, 120],
+    "pelvis": [40, 81],
+    "torso": [40, 81],
+    "head": [36, 38],
+    "upper_arm_R": [27, 45],
+    "lower_arm_R": [24, 58],
+    "upper_arm_L": [50, 45],
+    "lower_arm_L": [52, 58],
+    "upper_leg_R": [33, 81],
+    "lower_leg_R": [27, 95],
+    "upper_leg_L": [46, 81],
+    "lower_leg_L": [45, 95]
+  },
+  "soles": {
+    "note": "One point per shoe, the middle of its bottom row.",
+    "lower_leg_R": [[25, 117]],
+    "lower_leg_L": [[53, 117]]
+  },
+  "reach": {
+    "note": "px from a stepping joint's pivot to the end of its limb.",
+    "upper_leg_R": 36,
+    "upper_leg_L": 36,
+    "upper_arm_R": 36,
+    "upper_arm_L": 36
+  },
+  "cut": {
+    "note": "Inclusive rects [x0, y0, x1, y1]; first match in `order` wins, the rest is the torso.",
+    "order": ["head", "lower_arm_R", "upper_arm_R", "lower_arm_L", "upper_arm_L", "lower_leg_R", "upper_leg_R", "lower_leg_L", "upper_leg_L"],
+    "rects": {
+      "head": [[0, 0, 79, 38]],
+      "lower_arm_R": [[0, 59, 28, 68], [0, 69, 26, 82]],
+      "upper_arm_R": [[0, 43, 30, 58]],
+      "lower_arm_L": [[49, 59, 79, 68], [51, 69, 79, 82]],
+      "upper_arm_L": [[49, 44, 79, 58]],
+      "lower_leg_R": [[0, 96, 39, 127]],
+      "upper_leg_R": [[0, 82, 39, 95]],
+      "lower_leg_L": [[40, 96, 79, 127]],
+      "upper_leg_L": [[40, 82, 79, 95]]
+    },
+    "rest": "torso"
+  },
+  "overlap": {
+    "note": "Source pixels copied into a part although another part owns them.",
+    "torso": [[26, 82, 52, 84], [30, 34, 46, 38], [49, 44, 49, 58]],
+    "upper_arm_R": [[19, 59, 28, 60]],
+    "upper_arm_L": [[49, 59, 54, 60]],
+    "upper_leg_R": [[20, 96, 33, 97]],
+    "upper_leg_L": [[42, 96, 50, 97]]
+  },
+  "fill": {
+    "note": "Hidden torso pixels behind the near (R) arm.",
+    "torso": [{ "rect": [28, 44, 30, 58], "from": "right", "outline": "#0a0304" }]
+  },
+  "variants": {
+    "default": { "label": "Red suit (cast sheet)" },
+    "teal": {
+      "label": "Teal suit (recolour test)",
+      "recolor": {
+        "#f80202": "#2f8f8a",
+        "#e90203": "#2a837e",
+        "#d80202": "#26766f",
+        "#c30202": "#206761",
+        "#b90202": "#1d5f5a",
+        "#a80202": "#18524e",
+        "#710202": "#0f3835"
+      }
+    }
+  },
+  "accessories": {
+    "beanie": { "label": "Knit beanie (Alex's, reused)", "file": "../alex/accessories/beanie.png", "joint": "head", "offset": [-6, -2] }
+  }
+}

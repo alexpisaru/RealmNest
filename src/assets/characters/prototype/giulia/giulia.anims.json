@@ -1,0 +1,110 @@
+{
+  "id": "giulia",
+  "name": "Giulia (office, cast sheet)",
+  "generator": "tools/charpipe/build.ts (EffectCraft)",
+  "effectcraft": "effectcraft-cli 0.8.0",
+  "rig": "nestra-humanoid-3q",
+  "view": "se",
+  "frameWidth": 80,
+  "frameHeight": 128,
+  "anchor": {
+    "x": 40,
+    "y": 120
+  },
+  "layout": "horizontal strip, no padding, frame i at x = i * frameWidth",
+  "modes": {
+    "x1": "parts rendered at 1×, Draft (nearest-neighbour) layers",
+    "rotsprite": "parts enlarged 8× with Scale2x, rendered at 8×, sampled back (RotSprite)"
+  },
+  "outfits": {
+    "default": "Red suit (cast sheet)",
+    "teal": "Teal suit (recolour test)"
+  },
+  "accessories": {
+    "beanie": "Knit beanie (Alex's, reused)"
+  },
+  "animations": [
+    {
+      "id": "idle",
+      "label": "Idle: breathing",
+      "frames": 8,
+      "fps": 8,
+      "loop": true
+    },
+    {
+      "id": "walk",
+      "label": "Walk (se), stepping along the ground",
+      "frames": 8,
+      "fps": 12,
+      "loop": true
+    },
+    {
+      "id": "work",
+      "label": "Work: typing at a desk",
+      "frames": 4,
+      "fps": 6,
+      "loop": true
+    },
+    {
+      "id": "walk_planar",
+      "label": "Walk, limbs turning in the screen plane (rejected)",
+      "frames": 8,
+      "fps": 12,
+      "loop": true
+    }
+  ],
+  "sheets": {
+    "x1": {
+      "default": {
+        "idle": "x1/default/idle.png",
+        "walk": "x1/default/walk.png",
+        "work": "x1/default/work.png",
+        "walk_planar": "x1/default/walk_planar.png"
+      },
+      "default+beanie": {
+        "idle": "x1/default+beanie/idle.png",
+        "walk": "x1/default+beanie/walk.png",
+        "work": "x1/default+beanie/work.png",
+        "walk_planar": "x1/default+beanie/walk_planar.png"
+      },
+      "teal": {
+        "idle": "x1/teal/idle.png",
+        "walk": "x1/teal/walk.png",
+        "work": "x1/teal/work.png",
+        "walk_planar": "x1/teal/walk_planar.png"
+      },
+      "teal+beanie": {
+        "idle": "x1/teal+beanie/idle.png",
+        "walk": "x1/teal+beanie/walk.png",
+        "work": "x1/teal+beanie/work.png",
+        "walk_planar": "x1/teal+beanie/walk_planar.png"
+      }
+    },
+    "rotsprite": {
+      "default": {
+        "idle": "rotsprite/default/idle.png",
+        "walk": "rotsprite/default/walk.png",
+        "work": "rotsprite/default/work.png",
+        "walk_planar": "rotsprite/default/walk_planar.png"
+      },
+      "default+beanie": {
+        "idle": "rotsprite/default+beanie/idle.png",
+        "walk": "rotsprite/default+beanie/walk.png",
+        "work": "rotsprite/default+beanie/work.png",
+        "walk_planar": "rotsprite/default+beanie/walk_planar.png"
+      },
+      "teal": {
+        "idle": "rotsprite/teal/idle.png",
+        "walk": "rotsprite/teal/walk.png",
+        "work": "rotsprite/teal/work.png",
+        "walk_planar": "rotsprite/teal/walk_planar.png"
+      },
+      "teal+beanie": {
+        "idle": "rotsprite/teal+beanie/idle.png",
+        "walk": "rotsprite/teal+beanie/walk.png",
+        "work": "rotsprite/teal+beanie/work.png",
+        "walk_planar": "rotsprite/teal+beanie/walk_planar.png"
+      }
+    }
+  }
+}

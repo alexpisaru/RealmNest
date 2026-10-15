@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-telegram-edit"
+description = "Enables the telegram_edit command without any pre-configured scope."
+commands.allow = ["telegram_edit"]
+
+[[permission]]
+identifier = "deny-telegram-edit"
+description = "Denies the telegram_edit command without any pre-configured scope."
+commands.deny = ["telegram_edit"]
