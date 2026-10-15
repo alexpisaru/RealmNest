@@ -81,7 +81,7 @@ export function NewResearch({ initialQuestion, onStarted }: { initialQuestion?: 
           <ModelPicker connectionId={connectionId || undefined} value={reader || undefined} onChange={setReader} autoLabel={defaultReader ?? t('rs.readerSame')} />
         </label>
       </div>
-      <p className={`rs-web ${webSearch ? 'ok' : 'no'}`}>{webSearch ? t('rs.webYes', { name: conn?.name ?? '' }) : t('rs.webNo', { name: conn?.name ?? '' })}</p>
+      <p className={`rs-web ${webSearch ? 'ok' : 'no'}`}>{!conn ? t('chat.noConnections') : webSearch ? t('rs.webYes', { name: conn.name }) : t('rs.webNo', { name: conn.name })}</p>
       <span className="field-label">{t('rs.depth')}</span>
       <Segmented
         value={preset}

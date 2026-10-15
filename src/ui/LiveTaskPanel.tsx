@@ -85,6 +85,8 @@ export function LiveTaskPanel({ agentId }: { agentId: string }) {
     setError('');
     try {
       if (pending.loading) throw new LiveRuntimeError(t('files.waiting'));
+      // a new installation has none (0.11.1): say where to add one, in the user's language
+      if (!connections.list().length) throw new LiveRuntimeError(t('chat.noConnections'));
       live.startTask(agentId, { prompt, attachments: pending.ready });
       setPrompt('');
       pending.clear();

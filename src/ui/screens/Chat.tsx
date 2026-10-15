@@ -125,6 +125,8 @@ export function ChatScreen() {
   const send = (content = text, again?: { files: AttachmentInput[]; skillIds?: string[] }) =>
     act(() => {
       if (!again && pending.loading) throw new ChatError(t('files.waiting'));
+      // a new installation has none (0.11.1): say where to add one, in the user's language
+      if (!connections.list().length) throw new ChatError(t('chat.noConnections'));
       const outgoing = again?.files ?? pending.ready;
       // the AI may have changed since the files were added
       for (const f of outgoing) {
