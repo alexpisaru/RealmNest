@@ -5,7 +5,7 @@ A hotfix for 0.11.0 Public Beta.
 ## Fixed
 
 - Fixed an issue where development/demo agents could appear automatically on a fresh installation. New installations now start with a clean workspace.
-- A new installation no longer adds an AI connection by itself (before, a Claude connection appeared when the Claude Code CLI was signed in on the PC): every connection is one you add in Settings › AI connections.
+- A new installation no longer adds an AI connection by itself (before, a Claude connection appeared when the Claude Code CLI was signed in on the PC): every connection is one you add in Settings › AI connections. Until you add one, Chat, agent tasks and Deep Research tell you where to do it.
 - Existing user data is not affected: an existing profile opens exactly as it was, including one where every agent was deleted (before, the demo agents came back in that case too).
 - The sample agents are still available, only on request: Settings › General › Data › **Load the demo team**.
 

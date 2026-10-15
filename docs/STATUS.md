@@ -1,5 +1,18 @@
 # RealmNest OS: status checkpoint (15 October 2026)
 
+## RealmNest OS 0.11.1 Public Beta — hotfix status
+
+| | |
+| --- | --- |
+| fix | a new installation starts with a clean workspace: no demo agents (the 12-agent team is loaded only on request) and no AI connection created by itself; existing profiles open exactly as saved ([RELEASE_CANDIDATE_0.11.1.md](RELEASE_CANDIDATE_0.11.1.md)) |
+| source | `release-staging/RealmNest-OS-0.11.1`, build commit `8b87650` (three fix commits on top of 0.11.0) |
+| installer | `RealmNest-OS_0.11.1_x64-setup.exe` (NSIS, per-user, 82.7 MiB, SHA-256 `b6a88d5e…b078b`), not code-signed |
+| checks | TypeScript clean; Vitest 827 tests in 47 files; Rust 170 tests, fmt and clippy clean |
+| acceptance | installed release: clean install (0 agents, 0 connections, every screen empty, no errors), first agent survives a restart, deleting it leaves 0 after a restart, backup/restore, upgrade over a representative 0.11.0 profile, the owner's data restored byte for byte and opened on 0.11.1 |
+| blockers | none |
+| verdict | **READY FOR 0.11.1 PUBLIC BETA** |
+| exact next step | the owner reviews `release-staging/RealmNest-OS-0.11.1` and `release-artifacts/RealmNest-OS-0.11.1-Public-Beta/`, pushes, tags `v0.11.1` and publishes the release with the installer, `SHA256SUMS.txt` and the release notes |
+
 ## RealmNest OS 0.11.0 Public Beta — release candidate status
 
 | | |
@@ -22,9 +35,9 @@ This is a snapshot of where the project stands. Every milestone below was accept
 | check | result |
 | --- | --- |
 | TypeScript (`tsc -b --noEmit`) | clean |
-| Vitest | 814 tests in 46 files, all passing |
+| Vitest | 827 tests in 47 files, all passing (0.11.1) |
 | Rust | 170 tests passing; `cargo fmt` and `clippy -D warnings` clean |
-| Release | `realmnest-os.exe` 0.11.0 (0.11.0-beta), built 15 October after the V1 hardening, and the binary tested |
+| Release | `realmnest-os.exe` 0.11.1 (0.11.1-beta), built 15 October from the release tree, installed and tested |
 | Lint | the project has no lint script |
 
 ## Milestones done
