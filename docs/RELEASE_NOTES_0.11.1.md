@@ -5,6 +5,7 @@ A hotfix for 0.11.0 Public Beta.
 ## Fixed
 
 - Fixed an issue where development/demo agents could appear automatically on a fresh installation. New installations now start with a clean workspace.
+- A new installation no longer adds an AI connection by itself (before, a Claude connection appeared when the Claude Code CLI was signed in on the PC): every connection is one you add in Settings › AI connections.
 - Existing user data is not affected: an existing profile opens exactly as it was, including one where every agent was deleted (before, the demo agents came back in that case too).
 - The sample agents are still available, only on request: Settings › General › Data › **Load the demo team**.
 
@@ -17,7 +18,7 @@ A hotfix for 0.11.0 Public Beta.
 
 ## What a new installation contains
 
-No agents, crews, workflows, schedules, chats, memories, Knowledge bases of yours, artifacts, MCP servers, Skills of yours, Telegram pairing or saved keys. What ships with the app: the ten worlds, the built-in **RealmNest Docs** Knowledge base (this version's documentation), the built-in **Workspace Note** Skill, crew and workflow **templates** you can pick when creating one, and a **Claude** connection that uses the Claude Code CLI if it is installed on your PC (it holds no account or key of its own; remove it in Settings › AI connections if you don't want it).
+No agents, AI connections, crews, workflows, schedules, chats, memories, Knowledge bases of yours, artifacts, MCP servers, Skills of yours, Telegram pairing or saved keys. What ships with the app: the ten worlds, the built-in **RealmNest Docs** Knowledge base (this version's documentation), the built-in **Workspace Note** Skill and crew and workflow **templates** you can pick when creating one. No AI connection: add one in Settings › AI connections.
 
 ## Known limitations
 

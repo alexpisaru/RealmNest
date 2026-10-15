@@ -64,6 +64,8 @@ export interface ConnectionManagerOptions {
   newId?: () => string;
   /** the provider whose existing setup becomes the first connection (migration) */
   seedProviderId?: string;
+  /** a profile saved before connections existed: only then is the seed connection created (0.11.1: a new installation starts with none) */
+  legacyProfile?: () => Promise<boolean>;
 }
 
 let counter = 0;
@@ -93,7 +95,7 @@ export class ConnectionManager {
     this.newId = opts.newId ?? defaultId;
   }
 
-  /** Load connections (statuses reset to unknown), create the default one on first run. */
+  /** Load connections (statuses reset to unknown); a profile from before connections existed gets the default one. */
   async init() {
     const raw = await this.storage.get<Partial<ConnectionsSnapshot>>(KEY);
     this.holdSaves = !!this.storage.isUnreadable?.(KEY);
@@ -117,7 +119,10 @@ export class ConnectionManager {
     const seed = this.opts.seedProviderId;
     if (!this.seeded && seed && this.catalog.get(seed)?.create) {
       const def = this.catalog.get(seed)!;
-      if (![...this.connections.values()].some((c) => c.providerId === seed)) this.insert({ providerId: seed, method: def.methods[0].id, name: def.name, config: {}, secretNames: [] });
+      // only a profile saved before connections existed migrates its sign-in; a new installation starts with no
+      // connections (0.11.1), and the decision is kept so a later start does not create one either
+      const legacy = await (this.opts.legacyProfile?.() ?? true);
+      if (legacy && ![...this.connections.values()].some((c) => c.providerId === seed)) this.insert({ providerId: seed, method: def.methods[0].id, name: def.name, config: {}, secretNames: [] });
       this.seeded = true;
     }
     await this.save();

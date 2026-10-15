@@ -120,7 +120,7 @@ The bus carries these events, with no secrets in them:
 
 ## Migration from provider ids
 
-The first start creates a **Claude Code** connection from the existing CLI sign-in. It is done once (`seeded`), so a connection the user deletes is not recreated.
+A profile saved before connections existed gets a **Claude Code** connection from the existing CLI sign-in when it first starts with them. It is done once (`seeded`), so a connection the user deletes is not recreated. A new installation (no saved profile) gets no connection: since 0.11.1 every connection is one the user added.
 
 Agents and conversations saved with `providerId: 'claude-code'` are mapped to that connection when loaded, and written back right away. Tasks, runs, messages and provider sessions are preserved, and resumed conversations keep their Claude session.
 

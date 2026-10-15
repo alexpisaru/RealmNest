@@ -5,8 +5,9 @@
 Hotfix. Release notes: [docs/RELEASE_NOTES_0.11.1.md](docs/RELEASE_NOTES_0.11.1.md).
 
 - **A new installation starts with a clean workspace.** The app no longer creates the 12-agent demo team when a profile is new, when a profile has no agents (it came back after deleting every agent) or when the saved profile could not be read. An existing profile opens exactly as saved. The demo team is loaded only on request: Settings › General › Data › Load the demo team (was "Reset demo data").
+- **No AI connection is created for you.** A new installation no longer adds a Claude connection on its own when the Claude Code CLI is signed in on the PC: you add every connection in Settings › AI connections. Existing connections are kept as they are; only a profile from before connections existed still migrates its Claude Code sign-in.
 - A saved profile that is readable JSON but not a profile is kept aside (`nestra:corrupt:save`) like an unreadable one, never replaced at startup.
-- Tests: `src/tests/firstRun.test.ts` (new profile empty and stays empty, first agent persists, deleting the last agent leaves zero, every user store starts empty, existing profiles kept as they are, no production import of demo or test data).
+- Tests: `src/tests/firstRun.test.ts` (new profile empty and stays empty, first agent persists, deleting the last agent leaves zero, no connection created on a new profile or on its next starts, every user store starts empty, existing profiles kept as they are, no production import of demo or test data).
 
 ## 0.11.0 Public Beta (2026-10-15)
 

@@ -78,11 +78,12 @@ storageHealth.readPreviousSession();
 const unlessSafe = (a: StorageAdapter): StorageAdapter => (safe ? { kind: a.kind, get: (k) => a.get(k), set: async () => undefined, remove: async () => undefined } : a);
 const store = new AppStore(new RealmNestRepository(defaultAdapter()), bus);
 // providers RealmNest knows (the catalogue) and the user's connections to them (docs/CONNECTIONS.md);
-// the existing Claude Code sign-in becomes the first connection
+// a profile from before connections existed gets its Claude Code sign-in as the first connection; a new
+// installation starts with none (0.11.1)
 const catalog = new ProviderCatalog().register(claudeCodeDefinition).register(createOpenRouterDefinition(openRouterTransport())).register(createAnthropicDefinition(anthropicTransport())).register(createCodexDefinition(codexModels())).register(createOpenAiDefinition(openAiTransport())).register(createOllamaDefinition(ollamaTransport()));
 COMING_SOON.filter((d) => !catalog.get(d.id)).forEach((d) => catalog.register(d));
 const secrets = secretStore();
-const connections = new ConnectionManager(bus, catalog, defaultAdapter(), { runner: processRunner(), secrets }, { seedProviderId: claudeCodeDefinition.id });
+const connections = new ConnectionManager(bus, catalog, defaultAdapter(), { runner: processRunner(), secrets }, { seedProviderId: claudeCodeDefinition.id, legacyProfile: async () => (await defaultAdapter().get('save')) !== undefined });
 // every turn runs on a connection's adapter
 const providers = new ProviderService(new ProviderRegistry(), bus, (id) => connections.provider(id));
 // what each connection/model can do, and the user's routing policy (docs/CAPABILITIES.md)

@@ -5,7 +5,10 @@ import { EventBus } from '../core/events';
 import { demoCrew } from '../data/seed';
 import { RealmNestRepository } from '../persistence/repository';
 import { MemoryAdapter } from '../persistence/storage';
+import { ProviderCatalog } from '../runtime/connections/catalog';
+import { ConnectionManager } from '../runtime/connections/manager';
 import { UnavailableSecretStore } from '../runtime/connections/secrets';
+import type { ProcessRunner } from '../runtime/process/types';
 import { ConversationRuntime } from '../runtime/chat/conversationRuntime';
 import { ConversationRepository } from '../runtime/chat/repository';
 import { CrewService } from '../runtime/crew/service';
@@ -16,6 +19,7 @@ import { RuntimeRepository } from '../runtime/live/repository';
 import { McpClientManager } from '../runtime/mcp/manager';
 import type { McpTransportHost } from '../runtime/mcp/transport';
 import { MemoryService } from '../runtime/memory/service';
+import { claudeCodeDefinition } from '../runtime/providers/claude-code/definition';
 import { ProviderRegistry } from '../runtime/providers/registry';
 import { ProviderService } from '../runtime/providers/service';
 import { registerNativeTools, UnavailableToolHost } from '../runtime/tools/native';
@@ -28,6 +32,10 @@ import { AppStore } from '../store/appStore';
 // an existing profile opens exactly as saved, whatever it contains (docs/RELEASE_CANDIDATE_0.11.1.md).
 
 const newStore = (storage: MemoryAdapter, bus = new EventBus()) => new AppStore(new RealmNestRepository(storage), bus);
+const noRunner = { available: false, locate: async () => ({ found: false }), run: async () => ({ kind: 'spawn_error', code: 'not_found', message: 'none' }) } as unknown as ProcessRunner;
+// wired as in main.tsx: connections start before the store, and only a profile saved before connections existed migrates
+const newConnections = (storage: MemoryAdapter) =>
+  new ConnectionManager(new EventBus(), new ProviderCatalog().register(claudeCodeDefinition), storage, { runner: noRunner, secrets: new UnavailableSecretStore() }, { seedProviderId: claudeCodeDefinition.id, legacyProfile: async () => (await storage.get('save')) !== undefined });
 
 describe('first run: a new profile is a clean workspace', () => {
   it('has zero agents, saves that once, and stays empty after a reload', async () => {
@@ -98,6 +106,36 @@ describe('first run: a new profile is a clean workspace', () => {
   });
 });
 
+describe('first run: no AI connection is created for the user', () => {
+  it('a new profile has zero connections, also on the next starts once the profile exists', async () => {
+    const storage = new MemoryAdapter();
+    const first = newConnections(storage);
+    await first.init();
+    await newStore(storage).init();
+    expect(first.list()).toEqual([]);
+    for (let i = 0; i < 2; i++) {
+      const next = newConnections(storage);
+      await next.init();
+      expect(next.list()).toEqual([]);
+    }
+  });
+
+  it('a connection the user adds survives a restart, and removing it is not undone', async () => {
+    const storage = new MemoryAdapter();
+    const first = newConnections(storage);
+    await first.init();
+    await newStore(storage).init();
+    const c = await first.create({ providerId: claudeCodeDefinition.id, method: claudeCodeDefinition.methods[0].id, name: 'Claude' });
+    const second = newConnections(storage);
+    await second.init();
+    expect(second.list().map((x) => x.id)).toEqual([c.id]);
+    await second.remove(c.id);
+    const third = newConnections(storage);
+    await third.init();
+    expect(third.list()).toEqual([]);
+  });
+});
+
 describe('upgrade: an existing profile opens exactly as saved', () => {
   it('keeps every agent, including ones that look like the old demo team (nothing is matched by name or id)', async () => {
     const storage = new MemoryAdapter();
@@ -107,6 +145,27 @@ describe('upgrade: an existing profile opens exactly as saved', () => {
     await store.init();
     expect(store.getState().characters.map((c) => c.id)).toEqual(theirs.map((c) => c.id));
     expect(store.getState().currentWorldId).toBe('office');
+  });
+
+  it('keeps the connections of a 0.11.0 profile as they are, and adds none to one that has none', async () => {
+    const storage = new MemoryAdapter();
+    await storage.set('save', { version: 1, characters: [], settings: { language: 'it' }, currentWorldId: 'farm', seenIntro: true });
+    await storage.set('connections', { version: 1, seeded: true, connections: [{ id: 'conn-x', providerId: 'claude-code', method: 'cli', name: 'Claude', config: {}, secretNames: [], createdAt: 1, updatedAt: 1, status: 'connected' }] });
+    const kept = newConnections(storage);
+    await kept.init();
+    expect(kept.list().map((c) => c.id)).toEqual(['conn-x']);
+    await storage.set('connections', { version: 1, seeded: true, connections: [] });
+    const none = newConnections(storage);
+    await none.init();
+    expect(none.list()).toEqual([]);
+  });
+
+  it('a profile saved before connections existed still gets its Claude Code sign-in as a connection (migration)', async () => {
+    const storage = new MemoryAdapter();
+    await storage.set('save', { version: 1, characters: [], settings: { language: 'it' }, currentWorldId: 'farm', seenIntro: true });
+    const legacy = newConnections(storage);
+    await legacy.init();
+    expect(legacy.list().map((c) => c.providerId)).toEqual(['claude-code']);
   });
 
   it('a profile whose user deleted every agent stays empty (no demo agents come back)', async () => {
@@ -127,6 +186,11 @@ describe('production code does not load demo or test data at startup', () => {
   it('no production module imports test files or fixtures', () => {
     const offenders = production.filter((f) => /from ['"][^'"]*(\/tests\/|\/fixtures\/|\.test['"])/.test(readFileSync(f, 'utf8')));
     expect(offenders).toEqual([]);
+  });
+
+  it('the app creates a connection only for a profile from before connections existed', () => {
+    const main = readFileSync(join(SRC, 'main.tsx'), 'utf8');
+    expect(main).toMatch(/new ConnectionManager\([^;]*legacyProfile: async \(\) => \(await defaultAdapter\(\)\.get\('save'\)\) !== undefined/);
   });
 
   it('the demo team is reachable only on demand: no static import of data/seed outside tests and dev tools', () => {
