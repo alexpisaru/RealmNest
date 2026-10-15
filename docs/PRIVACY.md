@@ -1,6 +1,6 @@
 # Privacy and data
 
-RealmNest OS has **no telemetry, no analytics, no crash reporter and no update check**. Fonts and icons are bundled; the app's page may only load its own files. Something leaves this PC only when you use a provider or an integration you set up.
+RealmNest OS has **no telemetry, no analytics, no crash reporter and no update check**. (The Microsoft Edge WebView2 runtime that draws the window is part of Windows and keeps its own components up to date with Microsoft; RealmNest has no control over that traffic.) Fonts and icons are bundled; the app's page may only load its own files. Something leaves this PC only when you use a provider or an integration you set up.
 
 ## What is sent, to whom, when
 
@@ -30,11 +30,14 @@ Deep Research searches through the connection's own provider (Claude's web searc
 | folders the Claude Code / Codex CLIs run in | `%USERPROFILE%\.nestra\workspace`, `%USERPROFILE%\.nestra\codex` |
 | exports, reports, exported Skills, backups | `Documents\RealmNest Exports`, `Documents\RealmNest Skills` (if Documents is in OneDrive, these files sync with it) |
 | your agents' work folders | the folders you choose |
-| logs | none are written |
+| the program | `%LOCALAPPDATA%\RealmNest OS\` (`realmnest-os.exe`, `uninstall.exe`), a Start-menu shortcut, and an entry under Settings › Apps (per-user install, no administrator rights) |
+| logs | none are written by RealmNest |
+| Claude Code's own data | when you use a Claude account, the Claude Code CLI keeps its sessions, and sometimes large tool results, in its own folder `%USERPROFILE%\.claude` (Claude Code's behaviour, not RealmNest's) |
 
 ## Backup, reset, uninstall
 
 - **Backup**: Settings › General › Data › Export a backup writes every record of the app's local storage to one file; Import restores it. Files (attachments, artifacts) stay in the app data folder; secrets are never included.
 - **Reset demo data** replaces agents and settings with the demo crew; chats, knowledge and files are kept.
-- **Uninstall**: RealmNest is a single exe. Deleting it keeps all your data. To remove everything, also delete `%LOCALAPPDATA%\app.nestra.desktop`, `%USERPROFILE%\.nestra`, the `app.nestra.desktop` entries in Windows Credential Manager (Control Panel › Credential Manager › Windows Credentials) and, if you want, the RealmNest folders in Documents.
+- **Uninstall** (Settings › Apps › RealmNest OS) removes the program, the Start-menu shortcut and the Apps entry and **keeps your data** (checked on 0.11.0: the data folder stays and a reinstall finds everything). The uninstaller also offers to delete the app data. Saved keys and tokens in Windows Credential Manager always stay until you remove them. To remove everything, also delete `%LOCALAPPDATA%\app.nestra.desktop`, `%USERPROFILE%\.nestra`, the `app.nestra.desktop` entries in Windows Credential Manager (Control Panel › Credential Manager › Windows Credentials) and, if you want, the RealmNest folders in Documents.
+- **Reinstall / upgrade**: install the new version over the old one; data, settings, connections, keys and Telegram pairing are kept (checked from a previous build's data to the 0.11.0 installer).
 - `ollama serve` started by RealmNest is stopped when RealmNest closes; an Ollama you started yourself is left alone.

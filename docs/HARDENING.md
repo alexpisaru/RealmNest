@@ -136,7 +136,11 @@ Nothing is silently lost any more at the storage quota (banner, marker, skipped 
 
 ## Known limitations
 
-- Windows 10/11 only; needs the WebView2 Runtime; no installer and no automatic updates (replace the exe).
+- Windows 10/11 only; needs the WebView2 Runtime; per-user installer, no automatic updates, not code-signed (SmartScreen warns).
+- An abrupt stop can lose the last few seconds of changes (WebView2 commits local storage with a delay; seen in the 0.11.0 release test).
+- A new Claude connection needs a model chosen before the first chat (no Chat route by default).
+- Skills with more than 14,000 characters of instructions install but cannot run.
+- Very large tool results through Claude Code are stored by Claude Code where the model cannot read them.
 - Most data lives in WebView2 local storage (about 5 million characters per app); the app warns when a save fails. Back up from Settings › General › Data.
 - No OCR: scanned PDFs have no text. Very large PDFs may be read partially (with a warning).
 - Web: public pages only, no logins or cookies, no search engine of its own (Deep Research uses the provider's search).

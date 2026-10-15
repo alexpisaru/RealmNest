@@ -33,7 +33,11 @@ The first public beta of RealmNest OS: a visual operating environment for AI age
 
 ## Known limitations
 
-- Windows only; tested on Windows 11. Windows 10 and display scaling other than 100 % were not tested for this release.
+- Windows only; tested on Windows 11. **Not tested for this release: Windows 10, offline use, real display scaling** (125–200 % was checked by emulating the window sizes only).
+- If RealmNest or Windows stops abruptly, the last few seconds of changes may be missing at the next start (WebView2 writes its storage with a short delay); a normal close saves everything.
+- A first chat with a new Claude connection asks you to pick a model first (there is no default Chat route until you set one in Settings › AI capabilities).
+- Skills whose instructions are longer than 14,000 characters install but cannot run yet (several of the public Anthropic Skills are larger).
+- Very large tool results through Claude Code are kept by Claude Code in its own folder, where the model cannot read them; ask for smaller results.
 - Not code-signed; no automatic updates (install the next version over this one).
 - Most app data lives in WebView2 local storage (about 5 million characters): the app warns if a save fails; back up regularly.
 - No OCR (scanned PDFs have no text); very large PDFs may be read partially.
@@ -42,7 +46,7 @@ The first public beta of RealmNest OS: a visual operating environment for AI age
 - Telegram works only while RealmNest is open; voice messages are not transcribed.
 - Some messages from external programs stay in English.
 
-Full list: [HARDENING.md › Known limitations](HARDENING.md#known-limitations).
+Full list: `docs/HARDENING.md`, section Known limitations.
 
 ## Upgrading
 
