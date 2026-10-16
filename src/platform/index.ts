@@ -31,13 +31,15 @@ declare global {
 export const isDesktop = () => typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
 
 /**
- * Quit the app. In Tauri this will call `getCurrentWindow().close()` from
- * '@tauri-apps/api/window' (see docs/TAURI.md). In the browser we can only
- * try to close the tab and otherwise tell the caller it didn't work.
+ * Quit the app. In Tauri the main window is closed like with its X, which ends
+ * RealmNest (src-tauri/src/lib.rs); `window.close()` there only tore the page
+ * down and left an empty white window. In the browser we can only try to close
+ * the tab and otherwise tell the caller it didn't work.
  */
 export async function exitApp(): Promise<boolean> {
   if (isDesktop()) {
-    window.close();
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    await getCurrentWindow().close();
     return true;
   }
   window.close();
