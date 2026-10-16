@@ -287,7 +287,7 @@ function AddConnection({ def, onDone }: { def: ProviderDefinition; onDone: () =>
       {method && <p className="muted small">{tOr(t, `s.prov.${def.id}.${method.id}.desc`, method.description)}</p>}
       <label>
         <span>{t('s.conn.name')}</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('s.conn.namePh')} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('s.conn.namePh', { name: def.name })} />
       </label>
       {method?.fields.map((f) => (
         <Field key={f.key} f={f} providerId={def.id} value={values[f.key] ?? ''} onChange={(v) => setValues((x) => ({ ...x, [f.key]: v }))} />
