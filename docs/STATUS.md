@@ -1,5 +1,17 @@
 # RealmNest OS: status checkpoint (15 October 2026)
 
+## RealmNest OS 0.11.2 Public Beta — release status
+
+| | |
+| --- | --- |
+| changes | upgrades install over the old version (no uninstaller window), the installer starts the app directly after Close, installer logo, Exit closes the app, Claude/ChatGPT forms say what must be installed ([RELEASE_CANDIDATE_0.11.2.md](RELEASE_CANDIDATE_0.11.2.md)) |
+| source | `release-staging/RealmNest-OS-0.11.2`, build commit `cb216a3` |
+| installer | `RealmNest-OS_0.11.2_x64-setup.exe` (NSIS, per-user, 82.7 MiB, SHA-256 `f2b27eed…5abb`), not code-signed |
+| checks | TypeScript clean; Vitest 827 tests in 47 files; Rust 170 tests, fmt and clippy clean |
+| acceptance | GUI clean install, first launch empty, Exit, connection forms, GUI upgrade from 0.11.0 with data kept, owner's data restored byte for byte |
+| verdict | **READY FOR 0.11.2 PUBLIC BETA** |
+| exact next step | the owner pushes `release-staging/RealmNest-OS-0.11.2`, creates release `v0.11.2` with the installer, `SHA256SUMS.txt` and the release notes |
+
 ## RealmNest OS 0.11.1 Public Beta — hotfix status
 
 | | |

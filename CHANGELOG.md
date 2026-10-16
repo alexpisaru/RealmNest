@@ -2,6 +2,8 @@
 
 ## 0.11.2 Public Beta (2026-10-16)
 
+Installer and small fixes. Release notes: [docs/RELEASE_NOTES_0.11.2.md](docs/RELEASE_NOTES_0.11.2.md).
+
 - **Upgrading installs over the old version.** The installer no longer defaults to "uninstall before installing" when it finds an older RealmNest: that hid the installer window, opened the old uninstaller (with its "delete app data" box) and looked like a crash. An upgrade now installs over the old version, like a silent install; your data stays. RealmNest uses Tauri's NSIS template with this one change (`src-tauri/installer/installer.nsi`).
 - "Run RealmNest OS" on the installer's last page starts the app directly; before, it went through Explorer and could leave the installer hidden for a long time without starting the app.
 - The installer shows the RealmNest logo (welcome and finish sidebar, page header, icon).
