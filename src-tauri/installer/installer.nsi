@@ -1,7 +1,8 @@
 Unicode true
 ; RealmNest OS installer script: the NSIS template of tauri-bundler 2.12.2 (MIT OR Apache-2.0,
-; https://github.com/tauri-apps/tauri), used through bundle.windows.nsis.template, with one change marked
-; "Upgrading: RealmNest" in PageReinstall. When Tauri is upgraded, take its new template and re-apply that change.
+; https://github.com/tauri-apps/tauri), used through bundle.windows.nsis.template, with two changes marked
+; "Upgrading: RealmNest" (PageReinstall) and "Run RealmNest" (RunMainBinary). When Tauri is upgraded, take its new
+; template and re-apply them.
 ManifestDPIAware true
 ; Add in `dpiAwareness` `PerMonitorV2` to manifest for Windows 10 1607+ (note this should not affect lower versions since they should be able to ignore this and pick up `dpiAware` `true` set by `ManifestDPIAware true`)
 ; Currently undocumented on NSIS's website but is in the Docs folder of source tree, see
@@ -424,7 +425,11 @@ Var AppStartMenuFolder
 !insertmacro MUI_PAGE_FINISH
 
 Function RunMainBinary
-  nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" ""
+  ; Run RealmNest: RealmNest starts the app itself. RunAsUser went through Explorer and could keep the installer
+  ; hidden for a minute or more (or for good) after Close, without starting the app. This installer is per user and
+  ; never elevated (installMode currentUser), so the app runs as that same user.
+  SetOutPath "$INSTDIR"
+  Exec '"$INSTDIR\${MAINBINARYNAME}.exe"'
 FunctionEnd
 
 ; Uninstaller Pages
