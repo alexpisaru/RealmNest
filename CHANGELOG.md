@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.2 Public Beta (2026-10-16)
+
+- **Upgrading installs over the old version.** The installer no longer defaults to "uninstall before installing" when it finds an older RealmNest: that hid the installer window, opened the old uninstaller (with its "delete app data" box) and looked like a crash. An upgrade now installs over the old version, like a silent install; your data stays. RealmNest uses Tauri's NSIS template with this one change (`src-tauri/installer/installer.nsi`).
+- The installer shows the RealmNest logo (welcome and finish sidebar, page header, icon).
+- The **Exit** button closes RealmNest; before, it left an empty white window and only the window's X closed the app.
+- Claude and ChatGPT connection forms no longer say "the account already signed in on this computer": the folder field says "Default", and the help says Claude Code or the Codex CLI must be installed. Signing in without the CLI says what to install, in the interface language. The connection name example no longer names a person.
+
 ## 0.11.1 Public Beta (2026-10-15)
 
 Hotfix. Release notes: [docs/RELEASE_NOTES_0.11.1.md](docs/RELEASE_NOTES_0.11.1.md).
