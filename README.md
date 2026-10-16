@@ -1,4 +1,4 @@
-# RealmNest OS · 0.11.1 Public Beta
+# RealmNest OS · 0.11.2 Public Beta
 
 RealmNest OS is a visual operating environment for AI agents: a local-first Windows desktop app where you create agents, give them roles and AI models, and watch them work as pixel-art characters in isometric worlds. It looks like a cozy management game; underneath, the agents are real: they chat, use tools with your approval, read your documents and the web, remember what you allow, work together in crews and run scheduled workflows.
 
@@ -20,7 +20,7 @@ RealmNest OS is a visual operating environment for AI agents: a local-first Wind
 
 ## Install
 
-1. Download `RealmNest-OS_0.11.1_x64-setup.exe` and its checksum from the release page; check it with `Get-FileHash RealmNest-OS_0.11.1_x64-setup.exe` (SHA-256).
+1. Download `RealmNest-OS_0.11.2_x64-setup.exe` and its checksum from the release page; check it with `Get-FileHash RealmNest-OS_0.11.2_x64-setup.exe` (SHA-256).
 2. Run it. It installs for your Windows user only (no administrator rights) and adds RealmNest OS to the Start menu. The installer and the app are **not code-signed** yet, so Windows SmartScreen may say "Windows protected your PC": choose *More info › Run anyway* only if the checksum matches.
 3. RealmNest needs the Microsoft Edge WebView2 Runtime, which Windows 11 and updated Windows 10 already have; the installer fetches it if missing.
 
