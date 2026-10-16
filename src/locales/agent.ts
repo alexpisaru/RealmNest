@@ -176,6 +176,8 @@ export const it = {
   'a.acct.signOutAsk': 'Uscire da questo account {name}?',
   'a.acct.signInTitle': 'Accedi con {name}',
   'a.acct.browserOpenedNoCode': 'Si è aperto il browser: completa l’accesso lì. Quando hai finito, RealmNest se ne accorge da solo.',
+  'a.acct.missing.Claude': 'Claude Code non è installato su questo computer. Installalo da claude.com/claude-code, poi chiudi e riapri RealmNest.',
+  'a.acct.missing.ChatGPT': 'La Codex CLI non è installata su questo computer. Installala (con Node.js: npm install -g @openai/codex; oppure codex.exe da github.com/openai/codex/releases), poi chiudi e riapri RealmNest.',
   'a.art.fileMissing': 'Il file di questo artifact non si trova più: anteprima non disponibile.',
   'a.kn.fileTooLarge': 'Il file supera {mb} MB, il massimo per un documento.',
 } as const;
@@ -349,6 +351,8 @@ export const en: Record<keyof typeof it, string> = {
   'a.acct.signOutAsk': 'Sign out of this {name} account?',
   'a.acct.signInTitle': 'Sign in with {name}',
   'a.acct.browserOpenedNoCode': 'Your browser has opened: finish signing in there. RealmNest notices by itself when you are done.',
+  'a.acct.missing.Claude': 'Claude Code is not installed on this computer. Install it from claude.com/claude-code, then close and reopen RealmNest.',
+  'a.acct.missing.ChatGPT': 'The Codex CLI is not installed on this computer. Install it (with Node.js: npm install -g @openai/codex; or codex.exe from github.com/openai/codex/releases), then close and reopen RealmNest.',
   'a.art.fileMissing': 'This artifact’s file is missing: no preview.',
   'a.kn.fileTooLarge': 'The file is larger than {mb} MB, the limit for one document.',
 };

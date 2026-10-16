@@ -96,7 +96,11 @@ function ClaudeSignIn({ c, brand, onClose }: { c: AIConnection; brand: Brand; on
         if (ended.current) return;
         id.current = sid;
       })
-      .catch((e) => setStep({ k: 'done', ok: false, message: e instanceof Error ? e.message : String(e) }));
+      .catch((e) => {
+        const message = e instanceof Error ? e.message : String(e);
+        // the CLI is missing (a new computer): say what to install, in the user's language
+        setStep({ k: 'done', ok: false, message: /was not found on this computer/.test(message) ? t(`a.acct.missing.${brand}`) : message });
+      });
     return () => {
       // closing the window while the CLI waits ends that sign-in
       if (id.current) void login.cancel(id.current);
