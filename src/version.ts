@@ -6,5 +6,5 @@ import pkg from '../package.json';
 
 export const APP_VERSION: string = pkg.version;
 
-/** how the release is named to people: "0.11.2 Public Beta" */
+/** how the release is named to people: "0.12.0 Public Beta" */
 export const APP_LABEL = APP_VERSION.replace(/-beta$/, ' Public Beta');

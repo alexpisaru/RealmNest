@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.12.0 Public Beta (2026-10-26)
+
+ChatGPT on the web, and fixes. Release notes: [docs/RELEASE_NOTES_0.12.0.md](docs/RELEASE_NOTES_0.12.0.md).
 
 - **Deep Research with ChatGPT searches the web.** A ChatGPT (account) connection now uses OpenAI's live web search for Deep Research, like Claude does: one-off search turns with every other Codex tool still off, the search's own results (never URLs the model writes), each page then read by RealmNest's Web layer. Normal ChatGPT turns keep the search off. About 40,000 input tokens of the plan per search, mostly cached. Research turns with ChatGPT run one at a time, since ChatGPT answers bursts with 429.
 - **ChatGPT can search the web in chats and agent tasks with Web on.** With the Web switch on (and Knowledge not STRICT), a ChatGPT connection uses OpenAI's own web search during the turn, next to RealmNest's tools; the model is told so and names the pages it used. Those pages are read by OpenAI, not by RealmNest's Web layer, so they have no [W] labels or citation checks. With Web off nothing changes.

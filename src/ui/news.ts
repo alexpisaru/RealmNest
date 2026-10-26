@@ -4,6 +4,11 @@ import type { TKey } from '../i18n';
 The newest entry's version is the app's version (Settings › About). */
 export const NEWS: { version: string; date: string; items: TKey[] }[] = [
   {
+    version: '0.12.0-beta',
+    date: '2026-10-26',
+    items: ['w.news.120.1', 'w.news.120.2', 'w.news.120.3', 'w.news.120.4'],
+  },
+  {
     version: '0.11.2-beta',
     date: '2026-10-16',
     items: ['w.news.112.1', 'w.news.112.2', 'w.news.112.3'],
