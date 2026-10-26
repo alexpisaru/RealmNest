@@ -6,7 +6,8 @@
 //
 // Every turn is `codex exec --json … -`: the prompt goes to stdin, read-only, without the
 // user's config.toml, and with all of Codex's own tools off (RealmNest has its own tools
-// and approvals). The allowlist requires those switches, it does not merely permit them.
+// and approvals); a one-off search turn may use OpenAI's web search and nothing else. The
+// allowlist requires those switches, it does not merely permit them.
 // ─────────────────────────────────────────────────────────────
 
 import type { ProviderSessionRef } from '../types';
@@ -36,8 +37,14 @@ export const DISABLED_FEATURES = [
   'skill_mcp_dependency_install',
 ] as const;
 
-/** Codex's own web search, always off */
+/** Codex's own web search: off on every turn but a search turn */
 export const WEB_SEARCH_OFF = 'web_search="disabled"';
+/**
+ * A search turn (ProviderTurnRequest.webSearch, e.g. Deep Research): OpenAI's live search and nothing
+ * else. Only one-off turns, without a session and without RealmNest tools; the results come back as
+ * structured `web_search` items (URLs from the search, never written by the model).
+ */
+export const WEB_SEARCH_LIVE = 'web_search="live"';
 /** the system prompt travels as `-c developer_instructions=<TOML string>` */
 export const INSTRUCTIONS_KEY = 'developer_instructions';
 /** UTF-16 code units of the whole TOML string, quotes and escapes included */
@@ -57,6 +64,8 @@ export const CODEX_EFFORTS = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'
 export const PLAIN_PROMPT = 'You are an assistant in RealmNest. In this conversation you have no tools and no access to files, commands, the web or memory: answer in plain text.';
 /** a turn with RealmNest tools (the RealmNest MCP bridge): only those tools exist */
 export const BRIDGE_PROMPT = 'You are an assistant in RealmNest. Your only tools are the RealmNest tools offered here (MCP server "realmnest"); you have no other tools, files, commands, web or memory. Use a tool when it helps, wait for its result (RealmNest may ask the user first), then answer in plain text.';
+/** a search turn: web search is the only tool */
+export const SEARCH_PROMPT = 'You are a search assistant in RealmNest. Your only tool is web search. Search as asked, then reply in one short line; never invent results.';
 
 /** RealmNest tools: `--realmnest-bridge <config>`, expanded by the hosts into Codex's MCP settings */
 export const BRIDGE_FLAG = '--realmnest-bridge';
@@ -74,6 +83,8 @@ export interface TurnArgsOptions {
   bridge?: { configPath: string };
   /** reasoning effort (one of CODEX_EFFORTS; the provider drops anything else) */
   effort?: string;
+  /** a search turn (WEB_SEARCH_LIVE): honoured only for a one-off turn without the bridge */
+  webSearch?: boolean;
 }
 
 export const versionArgs = (): string[] => ['--version'];
@@ -98,21 +109,26 @@ export function tomlString(text: string): string {
 }
 
 /** the instructions argument for a system prompt; null when it does not fit on a command line */
-export function instructionsArg(systemPrompt: string | undefined, bridge = false): string | null {
+export function instructionsArg(systemPrompt: string | undefined, mode: 'plain' | 'bridge' | 'search' = 'plain'): string | null {
+  const base = mode === 'bridge' ? BRIDGE_PROMPT : mode === 'search' ? SEARCH_PROMPT : PLAIN_PROMPT;
   // Codex appends its own blocks (e.g. <skills_instructions>) right after: end on a line break
-  const value = tomlString(`${[bridge ? BRIDGE_PROMPT : PLAIN_PROMPT, systemPrompt?.trim()].filter(Boolean).join('\n\n')}\n`);
+  const value = tomlString(`${[base, systemPrompt?.trim()].filter(Boolean).join('\n\n')}\n`);
   return value.length > MAX_INSTRUCTIONS ? null : `${INSTRUCTIONS_KEY}=${value}`;
 }
 
+/** a search turn is one-off and has no RealmNest tools; otherwise the search stays off */
+export const isSearchTurn = (o: TurnArgsOptions) => !!o.webSearch && !o.bridge && !o.session;
+
 /** Throws when the system prompt is too long for a command line (the provider checks first). */
 export function turnArgs(o: TurnArgsOptions): string[] {
-  const instructions = instructionsArg(o.systemPrompt, !!o.bridge);
+  const search = isSearchTurn(o);
+  const instructions = instructionsArg(o.systemPrompt, o.bridge ? 'bridge' : search ? 'search' : 'plain');
   if (!instructions) throw new Error('system prompt too long');
   const args = ['exec', '--json', '--skip-git-repo-check', '-s', 'read-only', '--ignore-user-config'];
   // a one-off turn leaves nothing behind; a session is kept by Codex under the thread id it reports
   if (!o.session) args.push('--ephemeral');
   for (const f of DISABLED_FEATURES) if (!(o.bridge && f === BRIDGE_NEEDS)) args.push('--disable', f);
-  args.push('-c', WEB_SEARCH_OFF, '-c', instructions);
+  args.push('-c', search ? WEB_SEARCH_LIVE : WEB_SEARCH_OFF, '-c', instructions);
   if (o.effort && CODEX_EFFORTS.includes(o.effort)) args.push('-c', `${EFFORT_KEY}="${o.effort}"`);
   if (o.bridge) args.push(BRIDGE_FLAG, o.bridge.configPath);
   if (o.model) args.push('-m', o.model);
@@ -184,6 +200,7 @@ export function checkCodexArgs(args: readonly string[]): string | null {
   const seen = new Set<string>();
   const disabled = new Set<string>();
   const config = new Set<string>();
+  let liveSearch = false;
   for (let i = 0; i < opts.length; i++) {
     const name = opts[i];
     if (SWITCHES.has(name)) {
@@ -206,8 +223,9 @@ export function checkCodexArgs(args: readonly string[]): string | null {
       if (disabled.has(value)) return `duplicate --disable ${value}`;
       disabled.add(value);
     } else if (name === '-c') {
+      if (value === WEB_SEARCH_LIVE) liveSearch = true;
       const key =
-        value === WEB_SEARCH_OFF
+        value === WEB_SEARCH_OFF || value === WEB_SEARCH_LIVE
           ? 'web_search'
           : value?.startsWith(`${INSTRUCTIONS_KEY}=`) && isTomlString(value.slice(INSTRUCTIONS_KEY.length + 1))
             ? INSTRUCTIONS_KEY
@@ -220,9 +238,11 @@ export function checkCodexArgs(args: readonly string[]): string | null {
     } else return `argument not allowed: ${name.slice(0, 40)}`;
   }
   for (const required of ['--json', '--skip-git-repo-check', '--ignore-user-config', '-s']) if (!seen.has(required)) return `${required} is required`;
-  if (!config.has('web_search')) return 'web search must be disabled';
+  if (!config.has('web_search')) return 'the web search setting is required';
   // a bridge turn keeps the code-mode host (Codex calls MCP tools through it); every other tool is off
   const bridge = seen.has(BRIDGE_FLAG);
+  // live search only on a one-off search turn: no session, no RealmNest tools
+  if (liveSearch && (bridge || resume || !seen.has('--ephemeral'))) return 'web search is only for a one-off turn without RealmNest tools';
   if (bridge && disabled.has(BRIDGE_NEEDS)) return 'a bridge turn needs the code-mode host';
   const on = DISABLED_FEATURES.find((f) => !disabled.has(f) && !(bridge && f === BRIDGE_NEEDS));
   if (on) return `Codex's own tools must be off (--disable ${on})`;

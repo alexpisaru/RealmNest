@@ -1,6 +1,6 @@
 // The chosen AI connection's own web search as a WebSearchEngine (docs/DEEP_RESEARCH_PLAN.md):
-// Claude (account) → Claude Code's WebSearch tool; Anthropic API → the server web_search tool;
-// OpenRouter → the web plugin. One short provider turn per query; the results are the search's own
+// Claude (account) → Claude Code's WebSearch tool; ChatGPT (account) → Codex's live web search;
+// Anthropic API → the server web_search tool; OpenRouter → the web plugin. One short provider turn per query; the results are the search's own
 // structured results (search.results events), never URLs the model writes. Every result is then read
 // (or not) through the Web layer like any other address.
 

@@ -16,6 +16,8 @@ export type CodexItem =
   /** a notice from Codex itself (config warnings, fallbacks): not a failure */
   | { id: string; type: 'error'; message: string }
   | { id: string; type: 'reasoning'; text?: string }
+  /** a search turn's search: the query and the search's own results */
+  | { id: string; type: 'web_search'; query?: string; action?: { type: string; query?: string }; results?: { type?: string; url?: string; title?: string; domain?: string; ref_id?: string }[] }
   | { id: string; type: string; [k: string]: unknown };
 
 export type CodexEvent =

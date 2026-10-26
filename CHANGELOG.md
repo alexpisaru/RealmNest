@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Deep Research with ChatGPT searches the web.** A ChatGPT (account) connection now uses OpenAI's live web search for Deep Research, like Claude does: one-off search turns with every other Codex tool still off, the search's own results (never URLs the model writes), each page then read by RealmNest's Web layer. Normal ChatGPT turns keep the search off. About 40,000 input tokens of the plan per search, mostly cached.
+
 ## 0.11.2 Public Beta (2026-10-16)
 
 Installer and small fixes. Release notes: [docs/RELEASE_NOTES_0.11.2.md](docs/RELEASE_NOTES_0.11.2.md).

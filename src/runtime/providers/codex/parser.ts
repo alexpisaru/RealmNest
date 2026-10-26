@@ -62,6 +62,27 @@ export function classifyError(raw: string | undefined): ProviderErrorInfo {
   return { code: 'api_error', message: 'ChatGPT could not complete the turn.', detail };
 }
 
+/**
+ * A completed `web_search` item → hits: `results[]` of `{ url, title, domain, ref_id }` (Codex CLI 0.162.1).
+ * Only http(s) URLs, no duplicates, at most 20. Undefined when the item has no results list
+ * (e.g. an open_page or find_in_page action).
+ */
+export function codexSearchHits(item: unknown): { query?: string; results: { url: string; title?: string }[] } | undefined {
+  if (!item || typeof item !== 'object') return undefined;
+  const o = item as { query?: unknown; action?: { query?: unknown }; results?: unknown };
+  if (!Array.isArray(o.results)) return undefined;
+  const results: { url: string; title?: string }[] = [];
+  for (const r of o.results) {
+    const x = (r && typeof r === 'object' ? r : {}) as { url?: unknown; title?: unknown };
+    if (typeof x.url !== 'string' || !/^https?:\/\//i.test(x.url) || x.url.length > 2000) continue;
+    if (results.some((h) => h.url === x.url)) continue;
+    results.push({ url: x.url, ...(typeof x.title === 'string' && x.title.trim() && { title: x.title.trim().slice(0, 300) }) });
+    if (results.length >= 20) break;
+  }
+  const query = typeof o.query === 'string' && o.query ? o.query : typeof o.action?.query === 'string' ? o.action.query : undefined;
+  return { ...(query && { query: query.slice(0, 300) }), results };
+}
+
 export class CodexJsonParser {
   private threadId: string | undefined;
   private last: { id: string; text: string } | undefined;
@@ -143,6 +164,12 @@ export class CodexJsonParser {
 
   private item(item: CodexItem | undefined, out: ProviderEventBody[]) {
     if (!item || typeof item !== 'object') throw new Error('item.completed without item');
+    if (item.type === 'web_search') {
+      // a search turn: the search's own results (never URLs the model writes)
+      const hits = codexSearchHits(item);
+      if (hits) out.push({ type: 'search.results', ...(hits.query && { query: hits.query }), results: hits.results });
+      return;
+    }
     if (item.type !== 'agent_message') return; // notices, reasoning, (disabled) tool items
     const text = typeof (item as { text?: unknown }).text === 'string' ? (item as { text: string }).text : '';
     const id = typeof item.id === 'string' && item.id ? item.id : `item_${Date.now()}`;

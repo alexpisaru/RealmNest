@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkCodexArgs, checkCodexEnv, DISABLED_FEATURES, MAX_INSTRUCTIONS, PLAIN_PROMPT, tomlString, turnArgs, WEB_SEARCH_OFF } from '../runtime/providers/codex/args';
+import { checkCodexArgs, checkCodexEnv, DISABLED_FEATURES, MAX_INSTRUCTIONS, PLAIN_PROMPT, SEARCH_PROMPT, tomlString, turnArgs, WEB_SEARCH_LIVE, WEB_SEARCH_OFF } from '../runtime/providers/codex/args';
 import { createCodexDefinition } from '../runtime/providers/codex/definition';
 import { CODEX_FALLBACK_MODELS, modelInfo, modelsFromCache, type CodexModelSource } from '../runtime/providers/codex/models';
-import { classifyError, CodexJsonParser, usageOf } from '../runtime/providers/codex/parser';
+import { classifyError, codexSearchHits, CodexJsonParser, usageOf } from '../runtime/providers/codex/parser';
 import { BRIDGED_TURN_TIMEOUT_MS, CODEX_CAPABILITIES, CodexProvider } from '../runtime/providers/codex/provider';
 import type { CodexModelEntry } from '../runtime/providers/codex/types';
 import type { ProcessCallbacks, ProcessEnd, ProcessRunner, ProcessSpec, ProgramLocation } from '../runtime/process/types';
@@ -44,6 +44,27 @@ const SIGNED_OUT_TURN =
     '{"type":"turn.failed","error":{"message":"unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses"}}',
   ].join('\n') + '\n';
 
+// a real search turn (Codex CLI 0.162.1, web_search="live"): three of its results, plus a duplicate and a non-web address that must be dropped
+const SEARCH_RESULTS = [
+  { type: 'text_result', domain: 'tauri.app', ref_id: 'turn0search2', title: 'Google Play | Tauri', url: 'https://tauri.app/distribute/google-play/' },
+  { type: 'text_result', domain: 'tauri.app', ref_id: 'turn0search3', title: 'Announcing the Tauri v2 Beta Release | Tauri', url: 'https://tauri.app/blog/tauri-2-0-0-beta/' },
+  { type: 'text_result', domain: 'tauri.app', ref_id: 'turn0search2b', title: 'duplicate', url: 'https://tauri.app/distribute/google-play/' },
+  { type: 'text_result', domain: 'x', ref_id: 'turn0search9', title: 'not a web address', url: 'file:///C:/secret.txt' },
+  { type: 'text_result', domain: 'github.com', ref_id: 'turn0search0', url: 'https://github.com/tauri-apps/tauri/blob/dev/README.md' },
+];
+const SEARCH_TURN =
+  [
+    { type: 'thread.started', thread_id: '01a17886-ab60-7350-a284-6988341483b9' },
+    { type: 'turn.started' },
+    { type: 'item.completed', item: { id: 'item_0', type: 'agent_message', text: 'I will search the web.' } },
+    { type: 'item.started', item: { id: 'exec-4377bb40', type: 'web_search', query: '', action: { type: 'other' } } },
+    { type: 'item.completed', item: { id: 'exec-4377bb40', type: 'web_search', query: 'Tauri 2 Android support', action: { type: 'search', query: 'Tauri 2 Android support' }, results: SEARCH_RESULTS } },
+    { type: 'item.completed', item: { id: 'item_2', type: 'agent_message', text: 'done' } },
+    { type: 'turn.completed', usage: { input_tokens: 40747, cached_input_tokens: 32640, cache_write_input_tokens: 0, output_tokens: 61, reasoning_output_tokens: 0 } },
+  ]
+    .map((e) => JSON.stringify(e))
+    .join('\n') + '\n';
+
 const parse = (text: string, opts = {}) => {
   const p = new CodexJsonParser(opts);
   return text.split('\n').flatMap((l) => p.push(l).map((e) => e.body));
@@ -65,6 +86,27 @@ describe('Codex JSONL parser', () => {
     expect(events.filter((e) => e.type === 'text.completed').map((e) => (e as { text: string }).text)).toEqual(["I'll list the files first.", 'There are three files.']);
     expect(events.at(-1)).toMatchObject({ type: 'run.completed', text: 'There are three files.' });
     expect(events[0]).toMatchObject({ type: 'session.started', resumed: true });
+  });
+
+  it('a search turn reports the search’s own results: http(s) only, no duplicates, titles kept', () => {
+    const events = parse(SEARCH_TURN);
+    const found = events.filter((e) => e.type === 'search.results');
+    expect(found).toEqual([
+      {
+        type: 'search.results',
+        query: 'Tauri 2 Android support',
+        results: [
+          { url: 'https://tauri.app/distribute/google-play/', title: 'Google Play | Tauri' },
+          { url: 'https://tauri.app/blog/tauri-2-0-0-beta/', title: 'Announcing the Tauri v2 Beta Release | Tauri' },
+          { url: 'https://github.com/tauri-apps/tauri/blob/dev/README.md' },
+        ],
+      },
+    ]);
+    // the turn still ends normally, with the last message as the answer
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed', text: 'done' });
+    // an item without a results list (open_page, find_in_page) is not a search result
+    expect(codexSearchHits({ type: 'web_search', action: { type: 'open_page' } })).toBeUndefined();
+    expect(codexSearchHits({ type: 'web_search', action: { type: 'search', query: 'q' }, results: [] })).toEqual({ query: 'q', results: [] });
   });
 
   it('a one-off (ephemeral) turn reports no session', () => {
@@ -138,6 +180,24 @@ describe('Codex arguments', () => {
     expect(JSON.parse(value)).toBe(`${PLAIN_PROMPT}\n\nLine "one"\nC:\\path\n`);
     expect(JSON.parse(tomlString('a\u0001b\u007fc\0d'))).toBe('a\u0001b\u007fcd');
     expect(tomlString('\uD800x')).toBe('"\uFFFDx"');
+  });
+
+  it('only a one-off search turn without RealmNest tools turns OpenAI’s web search on', () => {
+    const search = turnArgs({ webSearch: true, model: 'gpt-5.6-luna' });
+    expect(checkCodexArgs(search)).toBeNull();
+    expect(search).toContain(WEB_SEARCH_LIVE);
+    expect(search).not.toContain(WEB_SEARCH_OFF);
+    expect(search).toContain('--ephemeral');
+    for (const f of DISABLED_FEATURES) expect(search.join(' ')).toContain(`--disable ${f}`);
+    const value = search.find((a) => a.startsWith('developer_instructions='))!.slice('developer_instructions='.length);
+    expect(JSON.parse(value)).toBe(`${SEARCH_PROMPT}\n`);
+    // a session or the bridge keeps the search off
+    const kept = [turnArgs({ webSearch: true, session: { mode: 'new' } }), turnArgs({ webSearch: true, session: { mode: 'resume', id: THREAD } }), turnArgs({ webSearch: true, bridge: { configPath: 'C:/x/realmnest-bridge/run-1.json' } })];
+    for (const args of kept) {
+      expect(checkCodexArgs(args)).toBeNull();
+      expect(args).toContain(WEB_SEARCH_OFF);
+      expect(args).not.toContain(WEB_SEARCH_LIVE);
+    }
   });
 
   it('a system prompt too long for a command line is refused before spawning', () => {
@@ -336,6 +396,19 @@ describe('CodexProvider turns', () => {
     expect(events.at(-1)).toMatchObject({ type: 'run.failed', error: { code: 'session_not_found' } });
   });
 
+  it('a web search request runs a one-off search turn and reports its results', async () => {
+    const runner = new FakeRunner({ turn: prints(SEARCH_TURN) });
+    const events = await collect(new CodexProvider(runner).runTurn(req({ webSearch: { maxUses: 1 }, messages: [{ role: 'user', content: 'Search the web once for: Tauri 2 Android support' }] })));
+    expect(checkCodexArgs(runner.calls[0].args)).toBeNull();
+    expect(runner.calls[0].args).toContain(WEB_SEARCH_LIVE);
+    const hits = events.find((e) => e.type === 'search.results') as { results: { url: string }[] } | undefined;
+    expect(hits?.results).toHaveLength(3);
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed', text: 'done' });
+    // a normal turn keeps the search off
+    await collect(new CodexProvider(runner).runTurn(req({ runId: 'r2' })));
+    expect(runner.calls[1].args).toContain(WEB_SEARCH_OFF);
+  });
+
   it('a one-off turn is ephemeral and reports no session', async () => {
     const runner = new FakeRunner({ turn: prints(OK_TURN) });
     const events = await collect(new CodexProvider(runner).runTurn(req()));
@@ -396,6 +469,7 @@ describe('Codex definition', () => {
     const caps = def.capabilities!({} as never, CODEX_CAPABILITIES);
     expect(caps['sessions.native']?.support).toBe('supported');
     expect(caps['tools.calling']?.support).toBe('supported');
-    expect(CODEX_CAPABILITIES).toMatchObject({ sessions: true, tools: false, toolCalling: false, vision: false, cost: false, usage: true });
+    expect(caps['web.search']?.support).toBe('supported');
+    expect(CODEX_CAPABILITIES).toMatchObject({ sessions: true, tools: false, toolCalling: false, vision: false, cost: false, usage: true, webSearch: true });
   });
 });

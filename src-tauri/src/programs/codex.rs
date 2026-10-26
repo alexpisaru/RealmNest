@@ -5,7 +5,8 @@
 //!
 //! Every turn runs `codex exec --json … -` with the prompt on stdin, read-only, without the
 //! user's config.toml, and with all of Codex's own tools switched off: RealmNest has its own
-//! tools and approvals. The allowlist does not only permit those switches, it requires them.
+//! tools and approvals. A one-off search turn may use OpenAI's web search and nothing else.
+//! The allowlist does not only permit those switches, it requires them.
 
 use super::{home_dir, HostProgram, Resolved};
 use serde::Serialize;
@@ -182,8 +183,10 @@ pub const DISABLED_FEATURES: [&str; 19] = [
     "skill_mcp_dependency_install",
 ];
 
-/// Codex's own web search, always off
+/// Codex's own web search: off on every turn but a search turn
 pub const WEB_SEARCH_OFF: &str = "web_search=\"disabled\"";
+/// a one-off search turn (no session, no RealmNest tools): OpenAI's live search and nothing else
+pub const WEB_SEARCH_LIVE: &str = "web_search=\"live\"";
 /// the caller's system prompt, as a TOML basic string
 pub const INSTRUCTIONS_KEY: &str = "developer_instructions";
 /// UTF-16 code units of the whole TOML string (quotes and escapes included)
@@ -281,6 +284,7 @@ pub fn check_args(args: &[String]) -> Result<(), String> {
     let mut seen: Vec<&str> = Vec::new();
     let mut disabled: Vec<&str> = Vec::new();
     let mut config: Vec<&str> = Vec::new();
+    let mut live_search = false;
     let mut i = 0;
     while i < opts.len() {
         let name = opts[i].as_str();
@@ -326,8 +330,11 @@ pub fn check_args(args: &[String]) -> Result<(), String> {
                 disabled.push(f);
             }
             "-c" => {
+                if value == Some(WEB_SEARCH_LIVE) {
+                    live_search = true;
+                }
                 let key = match value {
-                    Some(WEB_SEARCH_OFF) => "web_search",
+                    Some(WEB_SEARCH_OFF) | Some(WEB_SEARCH_LIVE) => "web_search",
                     Some(v)
                         if v.strip_prefix(INSTRUCTIONS_KEY)
                             .and_then(|r| r.strip_prefix('='))
@@ -363,10 +370,14 @@ pub fn check_args(args: &[String]) -> Result<(), String> {
         }
     }
     if !config.contains(&"web_search") {
-        return Err("web search must be disabled".into());
+        return Err("the web search setting is required".into());
     }
     // a bridge turn keeps the code-mode host (Codex calls MCP tools through it); every other tool is off
     let bridge = seen.contains(&BRIDGE_FLAG);
+    // live search only on a one-off search turn: no session, no RealmNest tools
+    if live_search && (bridge || resume || !seen.contains(&"--ephemeral")) {
+        return Err("web search is only for a one-off turn without RealmNest tools".into());
+    }
     if bridge && disabled.contains(&BRIDGE_NEEDS) {
         return Err("a bridge turn needs the code-mode host".into());
     }
