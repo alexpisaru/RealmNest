@@ -191,6 +191,16 @@ pub fn run() {
     app.run(|handle, event| {
         use std::sync::atomic::Ordering;
         match &event {
+            // a WM_CLOSE meant for "the main window" must not reach tao's message window (event_target)
+            #[cfg(windows)]
+            tauri::RunEvent::Ready => {
+                if let Some(main) = handle
+                    .get_webview_window("main")
+                    .and_then(|w| w.hwnd().ok())
+                {
+                    event_target::guard(event_target::find_on_this_thread(), main.0);
+                }
+            }
             tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
                 EXITING.store(true, Ordering::SeqCst);
             }
@@ -234,6 +244,155 @@ pub fn run() {
             }
         }
     });
+}
+
+/// tao's message window ("Tao Thread Event Target") receives everything other threads send to the
+/// event loop: window commands, exit, IPC events. It is an unowned top-level window with the visible
+/// style (layered, never drawn), so whatever closes "the process's main window" may pick it: .NET's
+/// `Process.CloseMainWindow`, `taskkill` without /F, scripts. Its default WM_CLOSE handling destroys
+/// it, and from then on nothing reaches the event loop: Esci and every window command fail ("failed to
+/// send message to the webview") and RealmNest can only be killed. Here a WM_CLOSE sent to it closes
+/// the main window instead, like its X, and the message window stays.
+#[cfg(windows)]
+mod event_target {
+    use windows_sys::Win32::Foundation::{BOOL, HWND, LPARAM, LRESULT, WPARAM};
+    use windows_sys::Win32::System::Threading::GetCurrentThreadId;
+    use windows_sys::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        EnumThreadWindows, GetClassNameW, PostMessageW, WM_CLOSE,
+    };
+
+    const CLASS: &str = "Tao Thread Event Target";
+    const SUBCLASS_ID: usize = 0x5245_4e54;
+
+    struct Search {
+        class: &'static str,
+        found: HWND,
+    }
+
+    unsafe extern "system" fn visit(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let search = &mut *(lparam as *mut Search);
+        let mut buf = [0u16; 64];
+        let n = GetClassNameW(hwnd, buf.as_mut_ptr(), buf.len() as i32);
+        if n > 0 && String::from_utf16_lossy(&buf[..n as usize]).eq_ignore_ascii_case(search.class)
+        {
+            search.found = hwnd;
+            return 0;
+        }
+        1
+    }
+
+    fn find(class: &'static str) -> HWND {
+        let mut search = Search {
+            class,
+            found: std::ptr::null_mut(),
+        };
+        // SAFETY: `search` outlives the synchronous enumeration
+        unsafe {
+            EnumThreadWindows(
+                GetCurrentThreadId(),
+                Some(visit),
+                &mut search as *mut Search as LPARAM,
+            )
+        };
+        search.found
+    }
+
+    /// tao's message window; call on the event loop's (main) thread. Null if there is none.
+    pub fn find_on_this_thread() -> HWND {
+        find(CLASS)
+    }
+
+    unsafe extern "system" fn on_message(
+        hwnd: HWND,
+        msg: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+        _id: usize,
+        main: usize,
+    ) -> LRESULT {
+        if msg == WM_CLOSE {
+            PostMessageW(main as HWND, WM_CLOSE, 0, 0);
+            return 0;
+        }
+        DefSubclassProc(hwnd, msg, wparam, lparam)
+    }
+
+    /// From now on a WM_CLOSE to `target` closes `main`. False if `target` could not be guarded.
+    pub fn guard(target: HWND, main: *mut core::ffi::c_void) -> bool {
+        // SAFETY: a subclass on a window of this thread; `main` is only posted to (a stale handle fails)
+        !target.is_null()
+            && unsafe { SetWindowSubclass(target, Some(on_message), SUBCLASS_ID, main as usize) }
+                != 0
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            CreateWindowExW, DestroyWindow, IsWindow, PeekMessageW, SendMessageW, MSG, PM_REMOVE,
+            WS_OVERLAPPED,
+        };
+
+        fn window(class: &str) -> HWND {
+            let class: Vec<u16> = class.encode_utf16().chain(std::iter::once(0)).collect();
+            // SAFETY: a system window class, no parent, no creation data
+            let h = unsafe {
+                CreateWindowExW(
+                    0,
+                    class.as_ptr(),
+                    std::ptr::null(),
+                    WS_OVERLAPPED,
+                    0,
+                    0,
+                    0,
+                    0,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    std::ptr::null(),
+                )
+            };
+            assert!(!h.is_null());
+            h
+        }
+
+        #[test]
+        fn a_close_sent_to_the_event_target_closes_the_main_window_instead() {
+            // stand-ins on this thread: "Static" handles WM_CLOSE like tao's window (DefWindowProc)
+            let unguarded = window("Static");
+            // SAFETY: windows of this thread; messages handled synchronously
+            unsafe {
+                SendMessageW(unguarded, WM_CLOSE, 0, 0);
+                assert_eq!(
+                    IsWindow(unguarded),
+                    0,
+                    "the default handling destroys the window"
+                );
+            }
+            let target = window("Static");
+            let main = window("Button");
+            assert_eq!(find("Static"), target);
+            assert!(guard(target, main));
+            unsafe {
+                SendMessageW(target, WM_CLOSE, 0, 0);
+                assert_ne!(
+                    IsWindow(target),
+                    0,
+                    "a guarded event target is never destroyed"
+                );
+                let mut msg: MSG = std::mem::zeroed();
+                assert_ne!(
+                    PeekMessageW(&mut msg, main, WM_CLOSE, WM_CLOSE, PM_REMOVE),
+                    0,
+                    "the main window is asked to close"
+                );
+                DestroyWindow(target);
+                DestroyWindow(main);
+            }
+            assert!(!guard(std::ptr::null_mut(), main));
+        }
+    }
 }
 
 /// One RealmNest per user session (Windows): a named mutex, and the running copy's main window

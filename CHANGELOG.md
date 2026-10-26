@@ -4,6 +4,7 @@
 
 - **Deep Research with ChatGPT searches the web.** A ChatGPT (account) connection now uses OpenAI's live web search for Deep Research, like Claude does: one-off search turns with every other Codex tool still off, the search's own results (never URLs the model writes), each page then read by RealmNest's Web layer. Normal ChatGPT turns keep the search off. About 40,000 input tokens of the plan per search, mostly cached. Research turns with ChatGPT run one at a time, since ChatGPT answers bursts with 429.
 - **ChatGPT rate limits no longer look like a hang.** When ChatGPT answers 429, Codex waits silently for minutes before retrying; RealmNest now reads Codex's retry warning and stops the turn at once with "ChatGPT is limiting requests from this account for now… Try again later", in chats, agent tasks and research.
+- **RealmNest can always be closed.** A tool that closes "the main window" of a program (PowerShell's `CloseMainWindow()`, `taskkill` without /F, scripts) could hit the hidden window RealmNest's event loop runs on and destroy it: from then on the window's buttons, Exit and every window command did nothing ("failed to send message to the webview") and the app had to be killed. A close sent to that window now closes RealmNest like the window's X, and the hidden window stays.
 
 ## 0.11.2 Public Beta (2026-10-16)
 
