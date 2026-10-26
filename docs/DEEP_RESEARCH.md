@@ -29,7 +29,7 @@ A research runs on one AI connection and one model, the same way a chat does. Pa
 | connection | search | notes |
 | --- | --- | --- |
 | Claude (account) | Claude Code's `WebSearch` in a headless turn (`--tools WebSearch --allowedTools WebSearch`) | Uses the plan's quota. The argument allowlist (TS and Rust) admits this one tool, only for search turns. |
-| ChatGPT (account) | Codex's live web search in a one-off turn (`-c web_search="live"`; only the code-mode host it searches through stays on, every other Codex tool off), results from the `web_search` item's `results` | Uses the plan's limits: about 40,000 input tokens per search, most of them cached. The argument allowlist (TS and Rust) admits `live` only on a one-off turn without a session or RealmNest tools. |
+| ChatGPT (account) | Codex's live web search in a one-off turn (`-c web_search="live"`; only the code-mode host it searches through stays on, every other Codex tool off), results from the `web_search` item's `results` | Uses the plan's limits: about 40,000 input tokens per search, most of them cached. The argument allowlist (TS and Rust) admits `live` only on a one-off turn without a session or RealmNest tools. Searches run one at a time (bursts of Codex searches stall for minutes); each still has the 120 s limit. |
 | Anthropic API | the server tool `web_search_20250305` | Billed per search on the key. |
 | OpenRouter | the `web` plugin (`url_citation` annotations) | Paid. Without credits the run fails and says so. A connection that needs a model cannot start a research without one. |
 | no search | none | The run uses only the selected Knowledge bases and says so up front. Without bases, it does not start. |

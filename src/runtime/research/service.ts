@@ -542,7 +542,8 @@ export class ResearchService {
     }
     const engine = providerSearchEngine({ providers: this.providers, connectionId: run.connectionId, ...((run.readerModel ?? run.model) && { model: run.readerModel ?? run.model }), name: `${info?.name ?? 'AI'} · web search`, runTag: run.id });
     const found: { q: (typeof queries)[number]; urls: { url: string; title: string; snippet?: string }[] }[] = [];
-    await pool(queries, this.opts.searchConcurrency ?? 2, async (q) => {
+    // ChatGPT (Codex) searches one at a time: bursts of Codex searches stall for minutes
+    await pool(queries, info?.providerId === 'codex' ? 1 : (this.opts.searchConcurrency ?? 2), async (q) => {
       if (signal.aborted) return;
       this.event(run, 'search', `Searching: ${q.text}`, { round: run.round, query: q.text });
       try {

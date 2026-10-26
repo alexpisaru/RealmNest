@@ -122,16 +122,33 @@ function steps(o: { plan?: string } = {}) {
   };
 }
 
-function rig(answer = steps(), opts: { storage?: MemoryAdapter; keepPicture?: (url: string, runId: string) => Promise<{ ref: string; w: number; h: number } | undefined> } = {}) {
+/** counts how many search turns run at the same time */
+class CountingModel extends ResearchModel {
+  active = 0;
+  most = 0;
+  async *runTurn(req: ProviderTurnRequest): AsyncGenerator<ProviderEvent> {
+    if (!req.webSearch) return yield* super.runTurn(req);
+    this.most = Math.max(this.most, ++this.active);
+    try {
+      await new Promise((r) => setTimeout(r, 15));
+      yield* super.runTurn(req);
+    } finally {
+      this.active--;
+    }
+  }
+}
+
+function rig(answer = steps(), opts: { storage?: MemoryAdapter; keepPicture?: (url: string, runId: string) => Promise<{ ref: string; w: number; h: number } | undefined>; providerId?: string; model?: ResearchModel } = {}) {
   const bus = new EventBus(3000);
   const pages = new Pages();
   pages.add('https://review.example/acme', PAGE_A);
   pages.add('https://acme.example/pricing', PAGE_B);
   const web = new WebService(new MemoryAdapter(), bus, pages);
-  const model = new ResearchModel(answer);
+  const model = opts.model ?? new ResearchModel(answer);
   const providers = new ProviderService(new ProviderRegistry().register(model), bus);
   const storage = opts.storage ?? new MemoryAdapter();
-  const research = new ResearchService(storage, bus, providers, web, undefined, (id) => (id === 'm' ? { providerId: 'claude-code', name: 'Claude', webSearch: true } : undefined), { ...(opts.keepPicture && { keepPicture: opts.keepPicture }) });
+  const providerId = opts.providerId ?? 'claude-code';
+  const research = new ResearchService(storage, bus, providers, web, undefined, (id) => (id === 'm' ? { providerId, name: 'Claude', webSearch: true } : undefined), { ...(opts.keepPicture && { keepPicture: opts.keepPicture }) });
   return { research, model, pages, web, storage, bus, providers };
 }
 
@@ -246,6 +263,20 @@ describe('a research run', () => {
     b.research.resume(run.id);
     await until(() => b.research.get(run.id)!.status === 'done');
     expect(b.research.get(run.id)!.report!.title).toBe('Acme Pro');
+  });
+
+  it('ChatGPT (Codex) searches run one at a time; others two at a time', async () => {
+    for (const [providerId, most] of [
+      ['codex', 1],
+      ['claude-code', 2],
+    ] as const) {
+      const model = new CountingModel(steps());
+      const { research } = rig(steps(), { providerId, model });
+      const run = await research.create({ question: 'Acme', connectionId: 'm', autoApprove: true, preset: 'quick' });
+      await until(() => research.get(run.id)!.queries.length >= 2);
+      research.cancel(run.id);
+      expect(model.most, providerId).toBe(most);
+    }
   });
 
   it('cancel keeps what was found; Write now writes from it', async () => {
