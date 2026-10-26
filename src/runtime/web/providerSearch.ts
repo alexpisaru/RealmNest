@@ -18,6 +18,8 @@ export interface ProviderSearchOptions {
   /** shown in provenance, e.g. "Claude · web search" */
   name: string;
   timeoutMs?: number;
+  /** extra attempts after a search turn that timed out with no results (Codex searches stall now and then) */
+  timeoutRetries?: number;
   /** a prefix for the searches' run ids (usage is counted for whoever asked: a research run) */
   runTag?: string;
 }
@@ -43,27 +45,31 @@ export function providerSearchEngine(o: ProviderSearchOptions): WebSearchEngine 
     supports: { freshness: true, domains: false, excludeDomains: false, language: true },
     async search(query, opts, signal) {
       const hits: WebHit[] = [];
-      const run = o.providers.run(
-        o.connectionId,
-        {
-          ...(o.runTag && { runId: `${o.runTag}~s${++n}` }),
-          ...(o.model && { model: o.model }),
-          messages: [{ role: 'user', content: searchPrompt(query, { ...(opts.freshness && { freshness: opts.freshness }), ...(opts.language && { language: opts.language }) }) }],
-          webSearch: { maxUses: 1 },
-          timeoutMs: o.timeoutMs ?? TIMEOUT_MS,
-        },
-        (e: ProviderEvent) => {
-          if (e.type === 'search.results') for (const h of e.results) if (!hits.some((x) => x.url === h.url)) hits.push(h);
-        },
-      );
-      const stop = () => void run.cancel();
-      signal?.addEventListener('abort', stop, { once: true });
-      let end: ProviderEvent;
-      try {
-        end = await run.done;
-      } finally {
-        signal?.removeEventListener('abort', stop);
-      }
+      const attempt = async (): Promise<ProviderEvent> => {
+        const run = o.providers.run(
+          o.connectionId,
+          {
+            ...(o.runTag && { runId: `${o.runTag}~s${++n}` }),
+            ...(o.model && { model: o.model }),
+            messages: [{ role: 'user', content: searchPrompt(query, { ...(opts.freshness && { freshness: opts.freshness }), ...(opts.language && { language: opts.language }) }) }],
+            webSearch: { maxUses: 1 },
+            timeoutMs: o.timeoutMs ?? TIMEOUT_MS,
+          },
+          (e: ProviderEvent) => {
+            if (e.type === 'search.results') for (const h of e.results) if (!hits.some((x) => x.url === h.url)) hits.push(h);
+          },
+        );
+        const stop = () => void run.cancel();
+        signal?.addEventListener('abort', stop, { once: true });
+        try {
+          return await run.done;
+        } finally {
+          signal?.removeEventListener('abort', stop);
+        }
+      };
+      let end = await attempt();
+      // a stalled search usually goes through on a second try
+      for (let left = o.timeoutRetries ?? 0; left > 0 && end.type === 'run.failed' && end.error.code === 'timeout' && !hits.length && !signal?.aborted; left--) end = await attempt();
       if (end.type === 'run.failed' && !hits.length) {
         const code = end.error.code;
         if (code === 'rate_limited') throw new WebError('SEARCH_RATE_LIMITED', `${o.name}: ${end.error.message}`);

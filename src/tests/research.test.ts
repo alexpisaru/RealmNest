@@ -203,6 +203,19 @@ describe('the provider search engine', () => {
     const r = await engine.search('acme', { count: 2 });
     expect(r.results.map((x) => x.url)).toEqual(['https://review.example/acme?utm_source=x', 'https://acme.example/pricing']);
   });
+
+  it('a search turn that timed out is tried again when asked (Codex), and only then', async () => {
+    let searches = 0;
+    const stallOnce = (req: ProviderTurnRequest): ProviderEventBody[] =>
+      req.webSearch && ++searches === 1 ? [{ type: 'provider.started' }, { type: 'run.failed', error: { code: 'timeout', message: 'Codex did not finish within 60 s; it was stopped.' } }] : steps()(req);
+    const retried = providerSearchEngine({ providers: rig(stallOnce).providers, connectionId: 'm', name: 'ChatGPT · web search', timeoutMs: 60_000, timeoutRetries: 1 });
+    expect((await retried.search('acme', { count: 2 })).results).toHaveLength(2);
+    expect(searches).toBe(2);
+    searches = 0;
+    const once = providerSearchEngine({ providers: rig(stallOnce).providers, connectionId: 'm', name: 'Claude · web search' });
+    await expect(once.search('acme', { count: 2 })).rejects.toThrow(/did not finish/);
+    expect(searches).toBe(1);
+  });
 });
 
 describe('a research run', () => {

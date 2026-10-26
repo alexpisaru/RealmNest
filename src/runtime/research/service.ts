@@ -540,10 +540,19 @@ export class ResearchService {
       this.event(run, 'warning', 'No new queries this round.');
       return;
     }
-    const engine = providerSearchEngine({ providers: this.providers, connectionId: run.connectionId, ...((run.readerModel ?? run.model) && { model: run.readerModel ?? run.model }), name: `${info?.name ?? 'AI'} · web search`, runTag: run.id });
+    // ChatGPT (Codex) searches stall now and then (bursts most of all) while most take 8-40 s: one at a
+    // time, and a stalled one is stopped at 60 s and tried once more (120 s at worst, as for the others)
+    const codex = info?.providerId === 'codex';
+    const engine = providerSearchEngine({
+      providers: this.providers,
+      connectionId: run.connectionId,
+      ...((run.readerModel ?? run.model) && { model: run.readerModel ?? run.model }),
+      name: `${info?.name ?? 'AI'} · web search`,
+      runTag: run.id,
+      ...(codex && { timeoutMs: 60_000, timeoutRetries: 1 }),
+    });
     const found: { q: (typeof queries)[number]; urls: { url: string; title: string; snippet?: string }[] }[] = [];
-    // ChatGPT (Codex) searches one at a time: bursts of Codex searches stall for minutes
-    await pool(queries, info?.providerId === 'codex' ? 1 : (this.opts.searchConcurrency ?? 2), async (q) => {
+    await pool(queries, codex ? 1 : (this.opts.searchConcurrency ?? 2), async (q) => {
       if (signal.aborted) return;
       this.event(run, 'search', `Searching: ${q.text}`, { round: run.round, query: q.text });
       try {
