@@ -20,9 +20,17 @@ const EXE = WIN ? 'codex.exe' : 'codex';
  */
 const DROPPED = /^(OPENAI_API_KEY|CODEX_API_KEY|CODEX_SANDBOX|CODEX_SANDBOX_NETWORK_DISABLED|CODEX_THREAD_ID|CODEX_SESSION_ID|CODEX_MANAGED_PACKAGE_ROOT|CODEX_INTERNAL_ORIGINATOR_OVERRIDE|CODEX_MANAGED_BY_.*)$/;
 
+/**
+ * Codex's log filter, always exactly this: a rate-limited request (429) and Codex's silent wait
+ * before retrying (often minutes) appear only in its log, never in the JSON events. This puts that
+ * one warning on stderr, where the provider stops the turn (parser.ts `retryWait`). Same as Rust.
+ */
+export const RETRY_LOG = 'codex_core::responses_retry=warn';
+
 export function codexEnv(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
-  for (const [k, v] of Object.entries(base)) if (!DROPPED.test(k)) env[k] = v;
+  for (const [k, v] of Object.entries(base)) if (!DROPPED.test(k) && k !== 'RUST_LOG') env[k] = v;
+  env.RUST_LOG = RETRY_LOG;
   return env;
 }
 

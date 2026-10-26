@@ -3,8 +3,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { checkCodexArgs, checkCodexEnv, DISABLED_FEATURES, MAX_INSTRUCTIONS, PLAIN_PROMPT, SEARCH_PROMPT, tomlString, turnArgs, WEB_SEARCH_LIVE, WEB_SEARCH_OFF } from '../runtime/providers/codex/args';
 import { createCodexDefinition } from '../runtime/providers/codex/definition';
+import { codexEnv, RETRY_LOG } from '../runtime/providers/codex/host';
 import { CODEX_FALLBACK_MODELS, modelInfo, modelsFromCache, type CodexModelSource } from '../runtime/providers/codex/models';
-import { classifyError, codexSearchHits, CodexJsonParser, usageOf } from '../runtime/providers/codex/parser';
+import { classifyError, codexSearchHits, CodexJsonParser, retryWait, usageOf } from '../runtime/providers/codex/parser';
 import { BRIDGED_TURN_TIMEOUT_MS, CODEX_CAPABILITIES, CodexProvider } from '../runtime/providers/codex/provider';
 import type { CodexModelEntry } from '../runtime/providers/codex/types';
 import type { ProcessCallbacks, ProcessEnd, ProcessRunner, ProcessSpec, ProgramLocation } from '../runtime/process/types';
@@ -212,6 +213,12 @@ describe('Codex arguments', () => {
     expect(checkCodexEnv({ CODEX_HOME: 'relative' })).not.toBeNull();
     expect(checkCodexEnv({ OPENAI_API_KEY: 'x' })).not.toBeNull();
   });
+
+  it('the host drops API keys and sets only the retry warning as Codex’s log (the user’s RUST_LOG too)', () => {
+    const env = codexEnv({ PATH: 'C:\\bin', OPENAI_API_KEY: 'sk-x', CODEX_THREAD_ID: 't', RUST_LOG: 'debug' });
+    expect(env).toEqual({ PATH: 'C:\\bin', RUST_LOG: RETRY_LOG });
+    expect(RETRY_LOG).toBe('codex_core::responses_retry=warn');
+  });
 });
 
 // ── models ───────────────────────────────────────────────────
@@ -410,6 +417,32 @@ describe('CodexProvider turns', () => {
     // a normal turn keeps the search off
     await collect(new CodexProvider(runner).runTurn(req({ runId: 'r2' })));
     expect(runner.calls[1].args).toContain(WEB_SEARCH_OFF);
+  });
+
+  it('a long silent wait Codex announces after a 429 ends the turn as rate_limited; a short retry goes on', async () => {
+    // the real warning (Codex CLI 0.162.1, RUST_LOG=codex_core::responses_retry=warn), with its colours
+    const WARN =
+      '\u001b[2m2026-10-26T15:34:06.512240Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2mcodex_core::responses_retry\u001b[0m\u001b[2m:\u001b[0m stream disconnected - retrying sampling request (1/5 in 533.9997621s)... turn_id=01a178d8-ee44-7443-b1b8-ac1427b6427f retries=1 max_retries=5 sampling_error=exceeded retry limit, last status: 429 Too Many Requests\n';
+    expect(retryWait(WARN)).toEqual({ attempt: 1, max: 5, seconds: 533.9997621, rateLimited: true });
+    expect(retryWait('INFO something else')).toBeUndefined();
+    const stalls: Script = async (spec, cb) => {
+      cb.onSpawn?.();
+      cb.onStdout?.(`{"type":"thread.started","thread_id":"${THREAD}"}\n{"type":"turn.started"}\n`);
+      // split across chunks, as a pipe may deliver it
+      cb.onStderr?.(WARN.slice(0, 90));
+      cb.onStderr?.(WARN.slice(90));
+      await new Promise<void>((r) => (spec.signal?.aborted ? r() : spec.signal?.addEventListener('abort', () => r(), { once: true })));
+      return { kind: 'cancelled' };
+    };
+    const events = await collect(new CodexProvider(new FakeRunner({ turn: stalls })).runTurn(req()));
+    expect(events.at(-1)).toMatchObject({ type: 'run.failed', error: { code: 'rate_limited' } });
+    expect((events.at(-1) as { error: { message: string } }).error.message).toContain('about 9 min');
+    // a retry in a couple of seconds is Codex's business: the turn goes on
+    const quick: Script = async (spec, cb) => {
+      cb.onStderr?.(WARN.replace('533.9997621s', '1.5s'));
+      return prints(OK_TURN)(spec, cb);
+    };
+    expect((await collect(new CodexProvider(new FakeRunner({ turn: quick })).runTurn(req()))).at(-1)).toMatchObject({ type: 'run.completed', text: 'PONG' });
   });
 
   it('a one-off turn is ephemeral and reports no session', async () => {

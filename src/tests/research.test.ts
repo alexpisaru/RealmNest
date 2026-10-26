@@ -126,14 +126,19 @@ function steps(o: { plan?: string } = {}) {
 class CountingModel extends ResearchModel {
   active = 0;
   most = 0;
+  reading = 0;
+  mostReading = 0;
   async *runTurn(req: ProviderTurnRequest): AsyncGenerator<ProviderEvent> {
-    if (!req.webSearch) return yield* super.runTurn(req);
-    this.most = Math.max(this.most, ++this.active);
+    const read = (req.systemPrompt ?? '').startsWith('You read one source');
+    if (!req.webSearch && !read) return yield* super.runTurn(req);
+    if (read) this.mostReading = Math.max(this.mostReading, ++this.reading);
+    else this.most = Math.max(this.most, ++this.active);
     try {
       await new Promise((r) => setTimeout(r, 15));
       yield* super.runTurn(req);
     } finally {
-      this.active--;
+      if (read) this.reading--;
+      else this.active--;
     }
   }
 }
@@ -278,7 +283,7 @@ describe('a research run', () => {
     expect(b.research.get(run.id)!.report!.title).toBe('Acme Pro');
   });
 
-  it('ChatGPT (Codex) searches run one at a time; others two at a time', async () => {
+  it('ChatGPT (Codex) turns run one at a time (429 on bursts); others search and read in parallel', async () => {
     for (const [providerId, most] of [
       ['codex', 1],
       ['claude-code', 2],
@@ -286,9 +291,11 @@ describe('a research run', () => {
       const model = new CountingModel(steps());
       const { research } = rig(steps(), { providerId, model });
       const run = await research.create({ question: 'Acme', connectionId: 'm', autoApprove: true, preset: 'quick' });
-      await until(() => research.get(run.id)!.queries.length >= 2);
+      // both pages read: the review gives two pieces of evidence, the pricing page one
+      await until(() => research.get(run.id)!.evidence.length >= 3);
       research.cancel(run.id);
-      expect(model.most, providerId).toBe(most);
+      expect(model.most, `${providerId} searches`).toBe(most);
+      expect(model.mostReading, `${providerId} page reads`).toBe(most);
     }
   });
 

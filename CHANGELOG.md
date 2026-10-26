@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- **Deep Research with ChatGPT searches the web.** A ChatGPT (account) connection now uses OpenAI's live web search for Deep Research, like Claude does: one-off search turns with every other Codex tool still off, the search's own results (never URLs the model writes), each page then read by RealmNest's Web layer. Normal ChatGPT turns keep the search off. About 40,000 input tokens of the plan per search, mostly cached. Codex searches sometimes stall, so they run one at a time and a stalled one is retried once after 60 s.
+- **Deep Research with ChatGPT searches the web.** A ChatGPT (account) connection now uses OpenAI's live web search for Deep Research, like Claude does: one-off search turns with every other Codex tool still off, the search's own results (never URLs the model writes), each page then read by RealmNest's Web layer. Normal ChatGPT turns keep the search off. About 40,000 input tokens of the plan per search, mostly cached. Research turns with ChatGPT run one at a time, since ChatGPT answers bursts with 429.
+- **ChatGPT rate limits no longer look like a hang.** When ChatGPT answers 429, Codex waits silently for minutes before retrying; RealmNest now reads Codex's retry warning and stops the turn at once with "ChatGPT is limiting requests from this account for now… Try again later", in chats, agent tasks and research.
 
 ## 0.11.2 Public Beta (2026-10-16)
 

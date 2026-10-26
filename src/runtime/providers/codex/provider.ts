@@ -16,7 +16,10 @@ import { isTerminal } from '../types';
 import { CODEX_HOME_ENV, CODEX_PROGRAM, MAX_INSTRUCTIONS, instructionsArg, loginStatusArgs, turnArgs, versionArgs } from './args';
 import { CODEX_FALLBACK_MODELS, modelsFromCache, type CodexModelSource } from './models';
 import { acceptedEffort } from '../effort';
-import { CodexJsonParser, classifyError, redactCodex } from './parser';
+import { CodexJsonParser, classifyError, redactCodex, retryWait } from './parser';
+
+/** Codex announcing a longer wait than this before retrying (a 429 from ChatGPT) ends the turn instead */
+export const MAX_RETRY_WAIT_S = 30;
 
 export const CODEX_ID = 'codex';
 
@@ -174,6 +177,17 @@ export class CodexProvider implements AIProvider {
       queue.push(stamp(body, raw));
     };
     const feed = (batch: string[]) => batch.forEach((line) => parser.push(line).forEach((e) => emit(e.body, e.raw)));
+    // Codex's retry warning (stderr, see RETRY_LOG in the hosts): a long wait ends the turn now, said plainly
+    const errLines = new LineBuffer();
+    let stalled: { seconds: number; rateLimited: boolean } | undefined;
+    const watch = (batch: string[]) => {
+      for (const line of batch) {
+        const w = retryWait(line);
+        if (!w || w.seconds <= MAX_RETRY_WAIT_S || stalled) continue;
+        stalled = w;
+        ac.abort();
+      }
+    };
     const timeoutMs = req.timeoutMs ?? (req.realmnestBridge ? this.bridgedTurnTimeoutMs : this.turnTimeoutMs);
     // a level only when this model lists it (the account's list, read only for turns that ask for one)
     const effort = req.effort ? acceptedEffort(await this.listModels(), req.model, req.effort) : undefined;
@@ -192,13 +206,27 @@ export class CodexProvider implements AIProvider {
         {
           onSpawn: () => emit({ type: 'provider.started', model: req.model }),
           onStdout: (chunk) => feed(lines.push(chunk)),
-          onStderr: (chunk) => stderr.push(chunk),
+          onStderr: (chunk) => {
+            stderr.push(chunk);
+            watch(errLines.push(chunk));
+          },
         },
       )
       .then(
         (end) => {
           feed(lines.end());
-          if (!terminal) emit(this.endToTerminal(end, stderr.toString(), parser, resume, timeoutMs));
+          if (terminal) return;
+          if (stalled) {
+            const minutes = Math.max(1, Math.round(stalled.seconds / 60));
+            emit({
+              type: 'run.failed',
+              error: stalled.rateLimited
+                ? { code: 'rate_limited', message: `ChatGPT is limiting requests from this account for now (429); Codex would wait about ${minutes} min before trying again, so the turn was stopped. Try again later.` }
+                : { code: 'api_error', message: `ChatGPT did not answer and Codex would wait about ${minutes} min before trying again, so the turn was stopped. Try again later.` },
+            });
+            return;
+          }
+          emit(this.endToTerminal(end, stderr.toString(), parser, resume, timeoutMs));
         },
         (err) => emit({ type: 'run.failed', error: { code: 'unknown', message: 'Codex could not be run.', detail: redactCodex(String(err)) } }),
       )

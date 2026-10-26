@@ -36,9 +36,12 @@ impl HostProgram for Codex {
         check_env(env)
     }
     fn env(&self, base: Vec<(String, String)>) -> Vec<(String, String)> {
-        base.into_iter()
-            .filter(|(k, _)| !is_dropped_var(k))
-            .collect()
+        let mut env: Vec<(String, String)> = base
+            .into_iter()
+            .filter(|(k, _)| !is_dropped_var(k) && k != LOG_ENV)
+            .collect();
+        env.push((LOG_ENV.into(), RETRY_LOG.into()));
+        env
     }
     fn default_cwd(&self) -> PathBuf {
         default_cwd()
@@ -427,6 +430,13 @@ fn check_home(v: &str) -> Result<(), String> {
     }
     Ok(())
 }
+
+/// Codex's log filter: always set, to exactly this. Codex reports a rate-limited request (429) and
+/// its silent wait before retrying (often minutes) only in its log, never in the JSON events; this
+/// puts that one warning on stderr, where the provider (src/runtime/providers/codex/parser.ts
+/// `retryWait`) stops the turn instead of waiting. Same value as host.ts.
+pub const LOG_ENV: &str = "RUST_LOG";
+pub const RETRY_LOG: &str = "codex_core::responses_retry=warn";
 
 /// Variables never passed on: those that tie a process to a running Codex session or sandbox
 /// (RealmNest started from inside Codex), and API keys, so a turn always uses the ChatGPT
@@ -823,13 +833,22 @@ mod tests {
             "CODEX_THREAD_ID",
             "CODEX_MANAGED_BY_NPM",
             "HTTPS_PROXY",
+            "RUST_LOG",
         ]
         .iter()
         .map(|k| (k.to_string(), "v".to_string()))
         .collect();
-        let mut kept: Vec<String> = Codex.env(base).into_iter().map(|(k, _)| k).collect();
+        let env = Codex.env(base);
+        let mut kept: Vec<String> = env.iter().map(|(k, _)| k.clone()).collect();
         kept.sort();
-        assert_eq!(kept, ["CODEX_HOME", "HTTPS_PROXY", "PATH"]);
+        assert_eq!(kept, ["CODEX_HOME", "HTTPS_PROXY", "PATH", "RUST_LOG"]);
+        // the user's own log filter is replaced: only the retry warning reaches stderr
+        let log: Vec<&str> = env
+            .iter()
+            .filter(|(k, _)| k == "RUST_LOG")
+            .map(|(_, v)| v.as_str())
+            .collect();
+        assert_eq!(log, [RETRY_LOG]);
     }
 
     fn tmp(name: &str) -> PathBuf {

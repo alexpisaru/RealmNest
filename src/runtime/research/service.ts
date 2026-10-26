@@ -501,7 +501,7 @@ export class ResearchService {
     }
     if (!passages.length) return;
     this.event(run, 'knowledge', `Reading ${passages.length} passage${passages.length > 1 ? 's' : ''} from your Knowledge.`, { round: run.round });
-    await pool(passages, this.opts.readConcurrency ?? 3, async (p) => {
+    await pool(passages, this.width(run, this.opts.readConcurrency ?? 3), async (p) => {
       if (signal.aborted) return;
       const src = this.addSource(run, p.source);
       await this.extract(run, src, p.text, signal);
@@ -540,8 +540,8 @@ export class ResearchService {
       this.event(run, 'warning', 'No new queries this round.');
       return;
     }
-    // ChatGPT (Codex) searches stall now and then (bursts most of all) while most take 8-40 s: one at a
-    // time, and a stalled one is stopped at 60 s and tried once more (120 s at worst, as for the others)
+    // ChatGPT (Codex) searches: one at a time (see width), and one with no results after 60 s is stopped
+    // and tried once more (120 s at worst, as for the others)
     const codex = info?.providerId === 'codex';
     const engine = providerSearchEngine({
       providers: this.providers,
@@ -552,7 +552,7 @@ export class ResearchService {
       ...(codex && { timeoutMs: 60_000, timeoutRetries: 1 }),
     });
     const found: { q: (typeof queries)[number]; urls: { url: string; title: string; snippet?: string }[] }[] = [];
-    await pool(queries, codex ? 1 : (this.opts.searchConcurrency ?? 2), async (q) => {
+    await pool(queries, this.width(run, this.opts.searchConcurrency ?? 2), async (q) => {
       if (signal.aborted) return;
       this.event(run, 'search', `Searching: ${q.text}`, { round: run.round, query: q.text });
       try {
@@ -581,7 +581,7 @@ export class ResearchService {
     const picks = await this.select(run, open, candidates, cap, signal);
     if (!picks.length) return;
     this.event(run, 'read', `Reading ${picks.length} page${picks.length > 1 ? 's' : ''}.`, { round: run.round });
-    await pool(picks, this.opts.readConcurrency ?? 3, async (p) => {
+    await pool(picks, this.width(run, this.opts.readConcurrency ?? 3), async (p) => {
       if (signal.aborted) return;
       let page;
       try {
@@ -804,6 +804,14 @@ export class ResearchService {
   }
 
   // ── bookkeeping ─────────────────────────────────────────
+  /**
+   * How many model turns run at once. ChatGPT (Codex) answers bursts of turns with 429 and Codex
+   * then waits minutes before retrying (the provider stops such a turn as rate_limited): one at a time.
+   */
+  private width(run: ResearchRun, n: number) {
+    return this.connection(run.connectionId)?.providerId === 'codex' ? 1 : n;
+  }
+
   private event(run: ResearchRun, phase: ResearchEvent['phase'], message: string, data?: ResearchEvent['data']) {
     run.events.push({ at: this.now(), phase, message: message.slice(0, 400), ...(data && { data }) });
     if (run.events.length > RESEARCH_LIMITS.events) run.events.splice(0, run.events.length - RESEARCH_LIMITS.events);

@@ -63,6 +63,19 @@ export function classifyError(raw: string | undefined): ProviderErrorInfo {
 }
 
 /**
+ * Codex's own retry warning on stderr (only with RUST_LOG=codex_core::responses_retry=warn, which the
+ * hosts set), e.g. after a 429 from ChatGPT: "stream disconnected - retrying sampling request (1/5 in
+ * 533.99s)… last status: 429 Too Many Requests". Codex then waits silently; nothing reaches the JSON.
+ */
+export function retryWait(line: string): { seconds: number; attempt: number; max: number; rateLimited: boolean } | undefined {
+  // eslint-disable-next-line no-control-regex
+  const text = line.replace(/\x1b\[[0-9;]*m/g, '');
+  const m = /retrying sampling request \((\d+)\/(\d+) in ([\d.]+)s\)/.exec(text);
+  if (!m) return undefined;
+  return { attempt: Number(m[1]), max: Number(m[2]), seconds: Number(m[3]), rateLimited: /\b429\b|too many requests|usage limit|rate limit/i.test(text) };
+}
+
+/**
  * A completed `web_search` item → hits: `results[]` of `{ url, title, domain, ref_id }` (Codex CLI 0.162.1).
  * Only http(s) URLs, no duplicates, at most 20. Undefined when the item has no results list
  * (e.g. an open_page or find_in_page action).
