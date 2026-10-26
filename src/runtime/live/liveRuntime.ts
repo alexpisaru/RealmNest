@@ -412,13 +412,16 @@ export class LiveRuntime implements AgentRuntime {
     }
     // Web: only for agents with Web access on; never in STRICT Knowledge runs
     let webTools = false;
+    // a backend that searches the web itself (ChatGPT through Codex) may do so when the agent has Web on
+    let providerWeb = false;
     if (this.opts.web && def.webAccess) {
       if (sel?.mode === 'strict') run.web = this.opts.web.skipped('Knowledge STRICT mode: answers come from documents only');
       else {
+        providerWeb = !!this.providers.resolve(connectionId)?.capabilities.nativeWebInTurns;
         try {
           // addresses in a prompt a model wrote are not the user's (they would be fetched without asking)
           const userTexts = this.modelWritten.has(task.id) ? [] : [task.prompt];
-          const w = await this.opts.web.beginRun(run.id, { canFetch: !!this.opts.tools?.modeFor(connectionId, model), userTexts, ...(sel && { knowledgeMode: sel.mode }) });
+          const w = await this.opts.web.beginRun(run.id, { canFetch: !!this.opts.tools?.modeFor(connectionId, model), userTexts, ...(sel && { knowledgeMode: sel.mode }), ...(providerWeb && { nativeSearch: true }) });
           if (active.cancelled) return;
           webTools = w.tools;
           message = { ...message, content: withContext(message.content, w.context, 'Task') };
@@ -428,7 +431,7 @@ export class LiveRuntime implements AgentRuntime {
       }
     }
     // the agent's effort: the adapter sends it only when this model lists it
-    const request = { runId: run.id, messages: [message], model, systemPrompt, workspace: def.workspace, ...(def.effort && { effort: def.effort }) };
+    const request = { runId: run.id, messages: [message], model, systemPrompt, workspace: def.workspace, ...(def.effort && { effort: def.effort }), ...(providerWeb && { providerWeb: true }) };
     // the agent's tools (with Skills: only what they need, then the agent's own), when its model can call them
     const withKnowledge = knowledgeTools(sel, canSearch, skill ? skill.toolIds : (def.allowedToolIds ?? []), skill?.toolIds) ?? [];
     const withMemory = memoryTool && sel?.mode !== 'strict' ? [...withKnowledge, SEARCH_MEMORY_ID] : withKnowledge;

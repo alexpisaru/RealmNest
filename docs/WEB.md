@@ -151,6 +151,10 @@ interface WebSearchEngine {
 - Results are normalized (`R1`… ids, tracking parameters removed, domain), de-duplicated (same URL, `www.`, same title on the same site), and `domains` / `excludeDomains` are applied locally when the engine cannot. An option the engine does not support (e.g. `language`) answers `SEARCH_UNSUPPORTED_OPTION`.
 - Policy for adding one: an official API (or a self-hosted service the user runs) whose terms allow this use; a key, if needed, lives in the OS credential store like every other secret; never a scraper of a results page; never CAPTCHA solving or anti-bot evasion.
 
+### A backend's own search in chats and agent tasks
+
+A connection whose adapter declares `nativeWebInTurns` (today only ChatGPT, through Codex) searches the web itself when the chat or agent has **Web** on and the Knowledge mode is not STRICT: the runtime sends `providerWeb: true` with the turn and tells the model, in the web rules, that it has its own web search (instead of "Web search is not configured"). Codex then runs with `web_search="live"` next to the turn's session or RealmNest tools (see PROVIDERS.md). Pages Codex finds and reads that way are read on OpenAI's side, not through this layer: they get no W label and are not citation-checked; the model is asked to name them (title and address). With Web off nothing changes.
+
 ## Errors
 
 `SEARCH_PROVIDER_NOT_CONFIGURED` · `SEARCH_RATE_LIMITED` · `SEARCH_FAILED` · `SEARCH_UNSUPPORTED_OPTION` · `FETCH_INVALID_URL` · `FETCH_BLOCKED_URL` · `FETCH_TIMEOUT` · `FETCH_TOO_LARGE` · `FETCH_TOO_MANY_REDIRECTS` · `FETCH_UNSUPPORTED_CONTENT` · `FETCH_ACCESS_DENIED` (401/403/407/451) · `FETCH_NOT_FOUND` · `FETCH_RATE_LIMITED` (429) · `FETCH_HTTP_ERROR` · `FETCH_NETWORK` · `FETCH_EXTRACTION_FAILED` · `RENDER_UNAVAILABLE` · `WEB_BUDGET_EXCEEDED` · `WEB_UNAVAILABLE`.

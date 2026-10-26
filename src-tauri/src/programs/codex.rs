@@ -5,7 +5,8 @@
 //!
 //! Every turn runs `codex exec --json … -` with the prompt on stdin, read-only, without the
 //! user's config.toml, and with all of Codex's own tools switched off: RealmNest has its own
-//! tools and approvals. A one-off search turn may use OpenAI's web search and nothing else.
+//! tools and approvals. OpenAI's web search may be on for a research search turn or when the
+//! user turned Web on, and nothing else.
 //! The allowlist does not only permit those switches, it requires them.
 
 use super::{home_dir, HostProgram, Resolved};
@@ -189,7 +190,8 @@ pub const DISABLED_FEATURES: [&str; 19] = [
 
 /// Codex's own web search: off on every turn but a search turn
 pub const WEB_SEARCH_OFF: &str = "web_search=\"disabled\"";
-/// a one-off search turn (no session, no RealmNest tools): OpenAI's live search and nothing else
+/// OpenAI's live search: a research search turn, or a chat/agent turn with Web on (the page
+/// decides); every other Codex tool stays off, the code-mode host it searches through stays on
 pub const WEB_SEARCH_LIVE: &str = "web_search=\"live\"";
 /// the caller's system prompt, as a TOML basic string
 pub const INSTRUCTIONS_KEY: &str = "developer_instructions";
@@ -378,10 +380,6 @@ pub fn check_args(args: &[String]) -> Result<(), String> {
     }
     // a bridge turn keeps the code-mode host (Codex calls MCP tools through it); every other tool is off
     let bridge = seen.contains(&BRIDGE_FLAG);
-    // live search only on a one-off search turn: no session, no RealmNest tools
-    if live_search && (bridge || resume || !seen.contains(&"--ephemeral")) {
-        return Err("web search is only for a one-off turn without RealmNest tools".into());
-    }
     if bridge && disabled.contains(&BRIDGE_NEEDS) {
         return Err("a bridge turn needs the code-mode host".into());
     }

@@ -496,12 +496,15 @@ export class ConversationRuntime {
     }
     // Web: public pages (web_fetch) and search (web_search), only when this chat has Web access on
     let webTools = false;
+    // a backend that searches the web itself (ChatGPT through Codex) may do so when Web is on
+    let providerWeb = false;
     if (this.opts.web && (c.web ?? t.def?.webAccess ?? false)) {
       if (sel?.mode === 'strict') run.web = this.opts.web.skipped('Knowledge STRICT mode: answers come from documents only');
       else {
+        providerWeb = !!this.providers.resolve(c.connectionId)?.capabilities.nativeWebInTurns;
         try {
           const userTexts = c.messages.filter((m) => m.role === 'user').map((m) => m.content);
-          const w = await this.opts.web.beginRun(run.id, { canFetch: !!this.opts.tools?.modeFor(c.connectionId, c.model), userTexts, ...(sel && { knowledgeMode: sel.mode }) });
+          const w = await this.opts.web.beginRun(run.id, { canFetch: !!this.opts.tools?.modeFor(c.connectionId, c.model), userTexts, ...(sel && { knowledgeMode: sel.mode }), ...(providerWeb && { nativeSearch: true }) });
           if (active.cancelled) return;
           webTools = w.tools;
           const now = messages[messages.length - 1];
@@ -517,6 +520,7 @@ export class ConversationRuntime {
       session: t.session,
       model: c.model,
       ...(c.effort && { effort: c.effort }),
+      ...(providerWeb && { providerWeb: true }),
       // the agent, what Skills exist (so the model can say which it has), then the active Skills
       systemPrompt: [c.agentId ? agentSystemPrompt(this.opts.identity?.(c.agentId), t.def ?? {}) : undefined, skillCatalog(t.catalog, t.def?.skillIds ?? [], t.pickIds), t.skill?.context].filter(Boolean).join('\n\n') || undefined,
       workspace: c.workspace,

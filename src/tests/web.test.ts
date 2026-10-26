@@ -529,6 +529,34 @@ describe('chat and agents with the Web', () => {
     expect(s.live.getRun(t2.run.id)!.web!.citations.map((c) => c.label)).toEqual(['W1']);
   });
 
+  it('a backend with its own web search (ChatGPT/Codex) may search in chats and agent tasks only with Web on', async () => {
+    const own = new ScriptedModel('m', () => say('Rust 1.90 is out (Rust Blog, https://blog.rust-lang.org/post).'), { ...CAPS, nativeWebInTurns: true });
+    const s = await appRig(own);
+    const c = s.chat.create({ connectionId: 'm' });
+    const off = s.chat.send(c.id, 'Latest Rust?');
+    await until(() => s.chat.run(off.run.id)?.status === 'completed');
+    expect(own.requests[0].providerWeb).toBeUndefined();
+    s.chat.setWeb(c.id, true);
+    const on = s.chat.send(c.id, 'Latest Rust?');
+    await until(() => s.chat.run(on.run.id)?.status === 'completed');
+    expect(own.requests[1].providerWeb).toBe(true);
+    // the model is told it can search itself, not that search is not configured
+    expect(own.requests[1].messages.at(-1)!.content).toContain('your own built-in web search');
+    expect(own.requests[1].messages.at(-1)!.content).not.toContain('Web search is not configured');
+    s.live.updateAgent('alex', { connectionId: 'm', webAccess: true });
+    const task = s.live.startTask('alex', { prompt: 'Latest Rust?' });
+    await until(() => s.live.getRun(task.run.id)?.status === 'completed');
+    expect(own.requests.at(-1)!.providerWeb).toBe(true);
+    // a backend without it never gets the flag
+    const plain = new ScriptedModel('m', () => say('ok'));
+    const p = await appRig(plain);
+    const pc = p.chat.create({ connectionId: 'm' });
+    p.chat.setWeb(pc.id, true);
+    const pr = p.chat.send(pc.id, 'Latest Rust?');
+    await until(() => p.chat.run(pr.run.id)?.status === 'completed');
+    expect(plain.requests[0].providerWeb).toBeUndefined();
+  });
+
   it('Knowledge + Web: [K] and [W] resolve separately; each check ignores the other family', async () => {
     const model = new ScriptedModel('m', (_req, n) => (n === 1 ? call('c1', 'web_fetch', { url: 'https://acme.example/pricing' }) : say('Our price is €49 per month [K1]. Acme Pro costs €59 per month [W1].')));
     const s = await appRig(model);

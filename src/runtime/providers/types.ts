@@ -78,6 +78,8 @@ export interface ProviderCapabilities {
   systemPrompt: boolean;
   /** can search the web with the backend's own search (ProviderTurnRequest.webSearch) and reports the results (search.results) */
   webSearch?: boolean;
+  /** with Web on (ProviderTurnRequest.providerWeb), the backend's own web search runs in ordinary chat and agent turns too */
+  nativeWebInTurns?: boolean;
 }
 
 /** one web search result as a backend's own search returned it (never invented by the model) */
@@ -165,6 +167,11 @@ export interface ProviderTurnRequest {
   abortSignal?: AbortSignal;
   /** let the backend use its own web search this turn (adapters with capabilities.webSearch) */
   webSearch?: { maxUses?: number };
+  /**
+   * The user turned Web on for this chat or agent: an adapter with capabilities.nativeWebInTurns
+   * lets its backend search the web itself during an ordinary turn, next to the turn's other tools.
+   */
+  providerWeb?: boolean;
   /** how much the model reasons first: one of the model's ModelInfo.reasoning.efforts; adapters ignore any other value (effort.ts) */
   effort?: string;
 }

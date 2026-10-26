@@ -45,6 +45,8 @@ export const CODEX_CAPABILITIES: ProviderCapabilities = {
   systemPrompt: true,
   // a one-off search turn (ProviderTurnRequest.webSearch) uses OpenAI's live search, reported as search.results
   webSearch: true,
+  // and a chat or agent turn with Web on may search too (ProviderTurnRequest.providerWeb)
+  nativeWebInTurns: true,
 };
 
 export interface CodexOptions {
@@ -196,7 +198,7 @@ export class CodexProvider implements AIProvider {
       .run(
         {
           program: CODEX_PROGRAM,
-          args: turnArgs({ model: req.model, systemPrompt: req.systemPrompt, session: req.session, ...(req.realmnestBridge && { bridge: { configPath: req.realmnestBridge.configPath } }), ...(req.webSearch && { webSearch: true }), effort }),
+          args: turnArgs({ model: req.model, systemPrompt: req.systemPrompt, session: req.session, ...(req.realmnestBridge && { bridge: { configPath: req.realmnestBridge.configPath } }), ...(req.webSearch && { webSearch: true }), ...(req.providerWeb && { web: true }), effort }),
           stdin: prompt,
           // always RealmNest's empty Codex folder (the host's default), never a project
           ...(this.env && { env: this.env }),

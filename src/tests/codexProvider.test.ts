@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkCodexArgs, checkCodexEnv, DISABLED_FEATURES, MAX_INSTRUCTIONS, PLAIN_PROMPT, SEARCH_PROMPT, tomlString, turnArgs, WEB_SEARCH_LIVE, WEB_SEARCH_OFF } from '../runtime/providers/codex/args';
+import { BRIDGE_WEB_PROMPT, checkCodexArgs, checkCodexEnv, DISABLED_FEATURES, MAX_INSTRUCTIONS, PLAIN_PROMPT, SEARCH_PROMPT, tomlString, turnArgs, WEB_PROMPT, WEB_SEARCH_LIVE, WEB_SEARCH_OFF } from '../runtime/providers/codex/args';
 import { createCodexDefinition } from '../runtime/providers/codex/definition';
 import { codexEnv, RETRY_LOG } from '../runtime/providers/codex/host';
 import { CODEX_FALLBACK_MODELS, modelInfo, modelsFromCache, type CodexModelSource } from '../runtime/providers/codex/models';
@@ -202,6 +202,22 @@ describe('Codex arguments', () => {
       expect(args).toContain(WEB_SEARCH_OFF);
       expect(args).not.toContain(WEB_SEARCH_LIVE);
     }
+  });
+
+  it('Web on in a chat or agent turn: OpenAI’s search next to the turn’s session or RealmNest tools', () => {
+    const chat = turnArgs({ web: true, session: { mode: 'resume', id: THREAD } });
+    const tools = turnArgs({ web: true, session: { mode: 'new' }, bridge: { configPath: 'C:/x/realmnest-bridge/run-1.json' } });
+    for (const args of [chat, tools]) {
+      expect(checkCodexArgs(args)).toBeNull();
+      expect(args).toContain(WEB_SEARCH_LIVE);
+      expect(args.join(' ')).not.toContain('--disable code_mode_host');
+      for (const f of DISABLED_FEATURES.filter((f) => f !== 'code_mode_host')) expect(args.join(' ')).toContain(`--disable ${f}`);
+    }
+    const said = (args: string[]) => JSON.parse(args.find((a) => a.startsWith('developer_instructions='))!.slice('developer_instructions='.length)) as string;
+    expect(said(chat)).toBe(`${WEB_PROMPT}\n`);
+    expect(said(tools)).toBe(`${BRIDGE_WEB_PROMPT}\n`);
+    // Web off: nothing changes
+    expect(turnArgs({ session: { mode: 'new' } })).toContain(WEB_SEARCH_OFF);
   });
 
   it('a system prompt too long for a command line is refused before spawning', () => {
@@ -414,9 +430,12 @@ describe('CodexProvider turns', () => {
     const hits = events.find((e) => e.type === 'search.results') as { results: { url: string }[] } | undefined;
     expect(hits?.results).toHaveLength(3);
     expect(events.at(-1)).toMatchObject({ type: 'run.completed', text: 'done' });
-    // a normal turn keeps the search off
+    // a normal turn keeps the search off; with the user's Web on (providerWeb) it is on
     await collect(new CodexProvider(runner).runTurn(req({ runId: 'r2' })));
     expect(runner.calls[1].args).toContain(WEB_SEARCH_OFF);
+    await collect(new CodexProvider(runner).runTurn(req({ runId: 'r3', providerWeb: true, session: { mode: 'new' } })));
+    expect(runner.calls[2].args).toContain(WEB_SEARCH_LIVE);
+    expect(checkCodexArgs(runner.calls[2].args)).toBeNull();
   });
 
   it('a long silent wait Codex announces after a 429 ends the turn as rate_limited; a short retry goes on', async () => {

@@ -441,11 +441,11 @@ export class WebService {
    * Start a run's Web: the rules, and (when the model cannot call tools) the pages the user
    * linked, read now. `userTexts`: what the user wrote in this conversation / task.
    */
-  async beginRun(runId: string, o: { canFetch: boolean; userTexts: string[]; knowledgeMode?: 'open' | 'grounded' | 'strict' }): Promise<{ context: string; tools: boolean }> {
+  async beginRun(runId: string, o: { canFetch: boolean; userTexts: string[]; knowledgeMode?: 'open' | 'grounded' | 'strict'; nativeSearch?: boolean }): Promise<{ context: string; tools: boolean }> {
     const seen = new Set(o.userTexts.flatMap(urlsIn));
     const s: Session = { runId, canFetch: o.canFetch, seen, labels: new Map(), texts: new Map(), record: { searches: [], fetches: [], sources: [], citations: [], invalidLabels: [] }, searchFor: new Map() };
     this.sessions.set(runId, s);
-    const parts = [webRules({ canFetch: o.canFetch && this.available, searchConfigured: this.searchConfigured, ...(o.knowledgeMode && { knowledgeMode: o.knowledgeMode }) })];
+    const parts = [webRules({ canFetch: o.canFetch && this.available, searchConfigured: this.searchConfigured, ...(o.knowledgeMode && { knowledgeMode: o.knowledgeMode }), ...(o.nativeSearch && { nativeSearch: true }) })];
     if (!this.available) parts.push('Web reading is unavailable in this build: say so if the user asks for web information.');
     else if (!o.canFetch) {
       // no tools: the URLs the user wrote in THIS message are read for the model

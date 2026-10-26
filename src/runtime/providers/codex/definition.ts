@@ -45,7 +45,7 @@ export function createCodexDefinition(models: CodexModelSource = new Unavailable
         ['tools.calling', 'supported', 'RealmNest tools through the RealmNest MCP bridge; Codex’s own tools stay off'],
         ['vision.input', 'unknown', 'codex exec -i takes image files; not wired in RealmNest yet'],
         ['files.input', 'unsupported', 'no document input through the CLI'],
-        ['web.search', 'supported', 'OpenAI’s live web search, only on Deep Research’s one-off search turns'],
+        ['web.search', 'supported', 'OpenAI’s live web search: Deep Research’s search turns, and chats or agent tasks with Web on'],
         ['structured.output', 'unknown', 'codex exec --output-schema exists; not wired in RealmNest'],
         ['image.generate', 'unsupported', 'switched off in RealmNest'],
         ['image.edit', 'unsupported', 'switched off in RealmNest'],
