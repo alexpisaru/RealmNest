@@ -188,7 +188,10 @@ describe('Codex arguments', () => {
     expect(search).toContain(WEB_SEARCH_LIVE);
     expect(search).not.toContain(WEB_SEARCH_OFF);
     expect(search).toContain('--ephemeral');
-    for (const f of DISABLED_FEATURES) expect(search.join(' ')).toContain(`--disable ${f}`);
+    // the web search runs through the code-mode host (with it off the turn hangs); every other tool stays off
+    expect(search.join(' ')).not.toContain('--disable code_mode_host');
+    for (const f of DISABLED_FEATURES.filter((f) => f !== 'code_mode_host')) expect(search.join(' ')).toContain(`--disable ${f}`);
+    expect(checkCodexArgs(search.flatMap((a, i) => (a === '-c' && search[i + 1] === WEB_SEARCH_LIVE ? ['--disable', 'code_mode_host', a] : [a])))).toMatch(/needs the code-mode host/);
     const value = search.find((a) => a.startsWith('developer_instructions='))!.slice('developer_instructions='.length);
     expect(JSON.parse(value)).toBe(`${SEARCH_PROMPT}\n`);
     // a session or the bridge keeps the search off

@@ -69,7 +69,7 @@ export const SEARCH_PROMPT = 'You are a search assistant in RealmNest. Your only
 
 /** RealmNest tools: `--realmnest-bridge <config>`, expanded by the hosts into Codex's MCP settings */
 export const BRIDGE_FLAG = '--realmnest-bridge';
-/** Codex calls MCP tools through its code-mode host: on only on bridge turns, every other tool stays off */
+/** Codex calls MCP tools and its web search through its code-mode host: on only on bridge and search turns, every other tool stays off */
 export const BRIDGE_NEEDS = 'code_mode_host';
 /** RealmNest's bridge configs: <absolute>/realmnest-bridge/<session>.json (Rust also checks it is RealmNest's own folder) */
 const BRIDGE_CONFIG = /^(?:[A-Za-z]:[\\/]|\/)(?:(?!\.\.)[^\0])*[\\/]realmnest-bridge[\\/][A-Za-z0-9_-]{1,64}\.json$/;
@@ -127,7 +127,8 @@ export function turnArgs(o: TurnArgsOptions): string[] {
   const args = ['exec', '--json', '--skip-git-repo-check', '-s', 'read-only', '--ignore-user-config'];
   // a one-off turn leaves nothing behind; a session is kept by Codex under the thread id it reports
   if (!o.session) args.push('--ephemeral');
-  for (const f of DISABLED_FEATURES) if (!(o.bridge && f === BRIDGE_NEEDS)) args.push('--disable', f);
+  // Codex calls tools (MCP tools, its web search) through the code-mode host: on only for bridge and search turns
+  for (const f of DISABLED_FEATURES) if (!((o.bridge || search) && f === BRIDGE_NEEDS)) args.push('--disable', f);
   args.push('-c', search ? WEB_SEARCH_LIVE : WEB_SEARCH_OFF, '-c', instructions);
   if (o.effort && CODEX_EFFORTS.includes(o.effort)) args.push('-c', `${EFFORT_KEY}="${o.effort}"`);
   if (o.bridge) args.push(BRIDGE_FLAG, o.bridge.configPath);
@@ -244,7 +245,9 @@ export function checkCodexArgs(args: readonly string[]): string | null {
   // live search only on a one-off search turn: no session, no RealmNest tools
   if (liveSearch && (bridge || resume || !seen.has('--ephemeral'))) return 'web search is only for a one-off turn without RealmNest tools';
   if (bridge && disabled.has(BRIDGE_NEEDS)) return 'a bridge turn needs the code-mode host';
-  const on = DISABLED_FEATURES.find((f) => !disabled.has(f) && !(bridge && f === BRIDGE_NEEDS));
+  // Codex's web search runs through the code-mode host too (with it off, a search turn hangs)
+  if (liveSearch && disabled.has(BRIDGE_NEEDS)) return 'a search turn needs the code-mode host';
+  const on = DISABLED_FEATURES.find((f) => !disabled.has(f) && !((bridge || liveSearch) && f === BRIDGE_NEEDS));
   if (on) return `Codex's own tools must be off (--disable ${on})`;
   if (resume && seen.has('--ephemeral')) return 'a resumed session cannot be ephemeral';
   return null;

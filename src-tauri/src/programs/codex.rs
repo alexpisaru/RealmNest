@@ -56,8 +56,9 @@ impl HostProgram for Codex {
 
 /// `--realmnest-bridge <config>`: a bridge session's config (RealmNest's own folder), expanded here
 pub const BRIDGE_FLAG: &str = "--realmnest-bridge";
-/// Codex calls MCP tools through its code-mode host: on only for bridge turns (with the shell,
-/// unified exec, view_image and every other tool still off, it can call nothing but RealmNest)
+/// Codex calls MCP tools and its web search through its code-mode host: on only for bridge and
+/// search turns (with the shell, unified exec, view_image and every other tool still off, it can
+/// call nothing but RealmNest, or the web search)
 pub const BRIDGE_NEEDS: &str = "code_mode_host";
 
 fn toml_str(v: &str) -> String {
@@ -381,9 +382,13 @@ pub fn check_args(args: &[String]) -> Result<(), String> {
     if bridge && disabled.contains(&BRIDGE_NEEDS) {
         return Err("a bridge turn needs the code-mode host".into());
     }
+    // Codex's web search runs through the code-mode host too (with it off, a search turn hangs)
+    if live_search && disabled.contains(&BRIDGE_NEEDS) {
+        return Err("a search turn needs the code-mode host".into());
+    }
     if let Some(f) = DISABLED_FEATURES
         .iter()
-        .find(|f| !disabled.contains(f) && !(bridge && **f == BRIDGE_NEEDS))
+        .find(|f| !disabled.contains(f) && !((bridge || live_search) && **f == BRIDGE_NEEDS))
     {
         return Err(format!("Codex's own tools must be off (--disable {f})"));
     }
