@@ -1,5 +1,17 @@
 # RealmNest OS: status checkpoint (15 October 2026)
 
+## RealmNest OS 0.12.0 Public Beta — release status
+
+| | |
+| --- | --- |
+| changes | ChatGPT searches the web (Deep Research; chats and agent tasks with Web on), ChatGPT rate limits reported at once, RealmNest always closes ([RELEASE_CANDIDATE_0.12.0.md](RELEASE_CANDIDATE_0.12.0.md)) |
+| source | `release-staging/RealmNest-OS-0.12.0`, build commit `9d4ff6a` |
+| installer | `RealmNest-OS_0.12.0_x64-setup.exe` (NSIS, per-user, 82.7 MiB, SHA-256 `7f672b06…bdda3`), not code-signed |
+| checks | TypeScript clean; Vitest 836 tests in 47 files; Rust 171 tests, fmt and clippy clean |
+| acceptance | upgrade over 0.11.2 on the owner's data (backed up first), version 0.12.0, data kept, ChatGPT connected, CloseMainWindow closes it; ChatGPT web features verified in the app on the same code |
+| verdict | **READY FOR 0.12.0 PUBLIC BETA** |
+| exact next step | the owner pushes `release-staging/RealmNest-OS-0.12.0` and publishes release `v0.12.0` with the installer, `SHA256SUMS.txt` and the release notes |
+
 ## RealmNest OS 0.11.2 Public Beta — release status
 
 | | |
@@ -47,9 +59,9 @@ This is a snapshot of where the project stands. Every milestone below was accept
 | check | result |
 | --- | --- |
 | TypeScript (`tsc -b --noEmit`) | clean |
-| Vitest | 827 tests in 47 files, all passing (0.11.1) |
+| Vitest | 836 tests in 47 files, all passing (0.12.0) |
 | Rust | 170 tests passing; `cargo fmt` and `clippy -D warnings` clean |
-| Release | `realmnest-os.exe` 0.11.1 (0.11.1-beta), built 15 October from the release tree, installed and tested |
+| Release | `realmnest-os.exe` 0.12.0 (0.12.0-beta), built 26 October from the release tree, installed and tested |
 | Lint | the project has no lint script |
 
 ## Milestones done
