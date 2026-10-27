@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" font-family="Segoe UI, -apple-system, Helvetica, Arial, sans-serif">
+  <title>How RealmNest OS works</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a8f84"/>
+    </marker>
+  </defs>
+  <!-- own background, so the picture reads on GitHub's light and dark themes -->
+  <rect x="0" y="0" width="960" height="400" rx="18" fill="#17191d"/>
+
+  <!-- you -->
+  <text x="40" y="44" fill="#9aa094" font-size="13" font-weight="600" letter-spacing="1.5">YOU</text>
+  <g font-size="14" fill="#e9e8df">
+    <rect x="30" y="60" width="204" height="44" rx="10" fill="#22262b" stroke="#343a40"/>
+    <text x="48" y="87">Chat with an agent</text>
+    <rect x="30" y="114" width="204" height="44" rx="10" fill="#22262b" stroke="#343a40"/>
+    <text x="48" y="141">Give an agent a task</text>
+    <rect x="30" y="168" width="204" height="44" rx="10" fill="#22262b" stroke="#343a40"/>
+    <text x="48" y="195">Start a crew</text>
+    <rect x="30" y="222" width="204" height="44" rx="10" fill="#22262b" stroke="#343a40"/>
+    <text x="48" y="249">Run or schedule a workflow</text>
+    <rect x="30" y="276" width="204" height="44" rx="10" fill="#22262b" stroke="#343a40"/>
+    <text x="48" y="303">Deep Research</text>
+  </g>
+  <text x="30" y="352" fill="#9aa094" font-size="12">or from your phone, through Telegram</text>
+
+  <line x1="240" y1="190" x2="276" y2="190" stroke="#8a8f84" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- RealmNest -->
+  <rect x="284" y="30" width="392" height="340" rx="16" fill="#1f2a24" stroke="#59c08f" stroke-width="1.5"/>
+  <text x="306" y="62" fill="#f8d3ad" font-size="18" font-weight="700">RealmNest OS</text>
+  <text x="306" y="82" fill="#9fb8a8" font-size="12">on your Windows PC · your data stays here</text>
+  <g font-size="13" fill="#e9e8df">
+    <rect x="304" y="98" width="170" height="58" rx="10" fill="#26332c"/>
+    <text x="318" y="122" font-weight="600">Agents &amp; worlds</text>
+    <text x="318" y="142" fill="#a9bfb1" font-size="12">pixel-art characters</text>
+    <rect x="486" y="98" width="170" height="58" rx="10" fill="#26332c"/>
+    <text x="500" y="122" font-weight="600">Tools &amp; approvals</text>
+    <text x="500" y="142" fill="#a9bfb1" font-size="12">files, MCP, Skills</text>
+    <rect x="304" y="166" width="170" height="58" rx="10" fill="#26332c"/>
+    <text x="318" y="190" font-weight="600">Knowledge</text>
+    <text x="318" y="210" fill="#a9bfb1" font-size="12">your documents, cited</text>
+    <rect x="486" y="166" width="170" height="58" rx="10" fill="#26332c"/>
+    <text x="500" y="190" font-weight="600">Memory</text>
+    <text x="500" y="210" fill="#a9bfb1" font-size="12">only what you approve</text>
+    <rect x="304" y="234" width="170" height="58" rx="10" fill="#26332c"/>
+    <text x="318" y="258" font-weight="600">Web</text>
+    <text x="318" y="278" fill="#a9bfb1" font-size="12">safe reading, sources</text>
+    <rect x="486" y="234" width="170" height="58" rx="10" fill="#26332c"/>
+    <text x="500" y="258" font-weight="600">Crews &amp; workflows</text>
+    <text x="500" y="278" fill="#a9bfb1" font-size="12">plans, reviews, schedules</text>
+  </g>
+  <text x="306" y="330" fill="#9fb8a8" font-size="12">No telemetry · keys in Windows Credential Manager</text>
+  <text x="306" y="350" fill="#9fb8a8" font-size="12">Medium-risk actions always ask you first</text>
+
+  <line x1="684" y1="190" x2="732" y2="190" stroke="#8a8f84" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- AI -->
+  <text x="742" y="44" fill="#9aa094" font-size="13" font-weight="600" letter-spacing="1.5">AI CONNECTIONS</text>
+  <g font-size="13" fill="#e9e8df">
+    <rect x="740" y="60" width="200" height="52" rx="10" fill="#2b2622" stroke="#4a3f35"/>
+    <text x="756" y="82" font-weight="600">Claude</text>
+    <text x="756" y="100" fill="#c9b8a6" font-size="12">your account, via Claude Code</text>
+    <rect x="740" y="120" width="200" height="52" rx="10" fill="#2b2622" stroke="#4a3f35"/>
+    <text x="756" y="142" font-weight="600">ChatGPT</text>
+    <text x="756" y="160" fill="#c9b8a6" font-size="12">your account, via Codex CLI</text>
+    <rect x="740" y="180" width="200" height="52" rx="10" fill="#2b2622" stroke="#4a3f35"/>
+    <text x="756" y="202" font-weight="600">API keys</text>
+    <text x="756" y="220" fill="#c9b8a6" font-size="11.5">Anthropic, OpenAI, OpenRouter</text>
+    <rect x="740" y="240" width="200" height="52" rx="10" fill="#2b2622" stroke="#4a3f35"/>
+    <text x="756" y="262" font-weight="600">Ollama</text>
+    <text x="756" y="280" fill="#c9b8a6" font-size="12">models on your own PC</text>
+  </g>
+  <text x="740" y="330" fill="#9aa094" font-size="12">Pick the connection, model and</text>
+  <text x="740" y="348" fill="#9aa094" font-size="12">effort per chat and per agent</text>
+</svg>
