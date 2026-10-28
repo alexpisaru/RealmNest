@@ -51,6 +51,8 @@ export const CLAUDE_CODE_CAPABILITIES: ProviderCapabilities = {
   toolBridge: true,
   // its own WebSearch tool (Anthropic's search), structured results in the stream
   webSearch: true,
+  // and a chat or agent turn with Web on may use it too (ProviderTurnRequest.providerWeb)
+  nativeWebInTurns: true,
 };
 
 export interface ClaudeCodeOptions {
@@ -196,7 +198,7 @@ export class ClaudeCodeProvider implements AIProvider {
       .run(
         {
           program: CLAUDE_PROGRAM,
-          args: turnArgs({ model: req.model, systemPrompt: req.systemPrompt, tools: req.tools ?? [], session: req.session, jsonInput: !!files?.length, ...(req.realmnestBridge && { bridge: req.realmnestBridge }), ...(req.webSearch && !req.realmnestBridge && { webSearch: true }), effort: acceptedEffort(CLAUDE_MODELS, req.model, req.effort) }),
+          args: turnArgs({ model: req.model, systemPrompt: req.systemPrompt, tools: req.tools ?? [], session: req.session, jsonInput: !!files?.length, ...(req.realmnestBridge && { bridge: req.realmnestBridge }), ...(req.webSearch && !req.realmnestBridge && { webSearch: true }), ...(req.providerWeb && !req.webSearch && { web: true }), effort: acceptedEffort(CLAUDE_MODELS, req.model, req.effort) }),
           stdin: files?.length ? userLine(prompt, files) : prompt,
           // always RealmNest's own folder (the host's default), never the agent's workspace: a project's
           // CLAUDE.md, settings and hooks must not load; RealmNest tools get the workspace from their scope

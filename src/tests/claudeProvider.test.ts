@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkClaudeArgs, PLAIN_PROMPT, turnArgs } from '../runtime/providers/claude-code/args';
+import { BRIDGE_WEB_PROMPT, checkClaudeArgs, PLAIN_PROMPT, turnArgs, WEB_PROMPT } from '../runtime/providers/claude-code/args';
 import { BRIDGED_TURN_TIMEOUT_MS, CLAUDE_CODE_CAPABILITIES, ClaudeCodeProvider } from '../runtime/providers/claude-code/provider';
 import type { ProcessCallbacks, ProcessEnd, ProcessRunner, ProcessSpec, ProgramLocation } from '../runtime/process/types';
 import { UnavailableProcessRunner } from '../runtime/process/types';
@@ -297,6 +297,28 @@ describe('Claude Code argument allowlist', () => {
     expect(checkClaudeArgs(turnArgs({ tools: [], session: { mode: 'new' } }))).toBeNull();
     expect(checkClaudeArgs(['--version'])).toBeNull();
     expect(checkClaudeArgs(['auth', 'status', '--json'])).toBeNull();
+  });
+
+  it('with Web on, a turn gets WebSearch (alone, or next to the RealmNest tools) and a prompt that says so', async () => {
+    const alone = turnArgs({ tools: [], web: true, systemPrompt: 'You are Alex.' });
+    expect(alone[alone.indexOf('--system-prompt') + 1]).toBe(`${WEB_PROMPT}\n\nYou are Alex.`);
+    expect(alone.slice(-2)).toEqual(['--tools', 'WebSearch']);
+    expect(alone[alone.indexOf('--allowedTools') + 1]).toBe('WebSearch');
+    expect(checkClaudeArgs(alone)).toBeNull();
+    const bridge = { configPath: 'C:\\Users\\me\\AppData\\Local\\app.nestra.desktop\\realmnest-bridge\\run-1.json', tools: ['mcp__realmnest__web_fetch'] };
+    const both = turnArgs({ tools: [], web: true, bridge });
+    expect(both[both.indexOf('--allowedTools') + 1]).toBe('mcp__realmnest__web_fetch,WebSearch');
+    expect(both[both.indexOf('--system-prompt') + 1]).toBe(BRIDGE_WEB_PROMPT);
+    expect(both.slice(-2)).toEqual(['--tools', 'WebSearch']);
+    expect(checkClaudeArgs(both)).toBeNull();
+    // Web off: nothing of Claude's own
+    expect(turnArgs({ tools: [], bridge }).slice(-2)).toEqual(['--tools', '']);
+    // the provider: providerWeb on a chat turn, never on a search turn (that one is WebSearch alone already)
+    expect(CLAUDE_CODE_CAPABILITIES.nativeWebInTurns).toBe(true);
+    const runner = new FakeRunner({ turn: prints(fixture('success-partial.sample.jsonl')) });
+    await collect(new ClaudeCodeProvider(runner).runTurn(req({ providerWeb: true })));
+    expect(runner.calls[0].args.slice(-2)).toEqual(['--tools', 'WebSearch']);
+    expect(runner.calls[0].args).toContain(WEB_PROMPT);
   });
 
   it("replaces Claude Code's agentic system prompt when no tools are enabled", () => {

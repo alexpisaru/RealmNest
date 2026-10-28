@@ -62,7 +62,7 @@ fn is_model(v: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric() || "._:-[]".contains(c))
 }
 
-/// Claude's own tools: none, or WebSearch alone on a search turn (never Bash, Read, Edit…)
+/// Claude's own tools: none, or WebSearch alone (a search turn, or Web on) — never Bash, Read, Edit…
 fn is_tool_list(v: &str) -> bool {
     v.is_empty() || v == WEB_SEARCH_TOOL
 }
@@ -95,19 +95,22 @@ pub(crate) fn is_bridge_config(v: &str) -> bool {
     v.len() <= 1024 && p.is_absolute() && !v.contains("..") && name_ok && dir_ok && place_ok
 }
 
-/// only RealmNest's bridge tools: `mcp__realmnest__<name>`, comma-separated
-fn is_bridge_tool_list(v: &str) -> bool {
+/// one RealmNest bridge tool: `mcp__realmnest__<name>`
+fn is_bridge_tool(t: &str) -> bool {
+    t.strip_prefix("mcp__realmnest__").is_some_and(|n| {
+        !n.is_empty()
+            && n.len() <= 64
+            && n.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+    })
+}
+
+/// `--allowedTools`: RealmNest's bridge tools (at most 32) and WebSearch (at most once), comma-separated
+fn is_allowed_tool_list(v: &str) -> bool {
     let tools: Vec<&str> = v.split(',').collect();
-    !v.is_empty()
-        && tools.len() <= 32
-        && tools.iter().all(|t| {
-            t.strip_prefix("mcp__realmnest__").is_some_and(|n| {
-                !n.is_empty()
-                    && n.len() <= 64
-                    && n.bytes()
-                        .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
-            })
-        })
+    let bridge = tools.iter().filter(|t| is_bridge_tool(t)).count();
+    let web = tools.iter().filter(|t| **t == WEB_SEARCH_TOOL).count();
+    !v.is_empty() && bridge <= 32 && web <= 1 && bridge + web == tools.len()
 }
 
 fn is_prompt_text(v: &str) -> bool {
@@ -138,7 +141,7 @@ fn flag(name: &str) -> Option<Flag> {
         "--append-system-prompt" | "--system-prompt" => Flag::Value(is_prompt_text),
         "--tools" => Flag::Value(is_tool_list),
         "--mcp-config" => Flag::Value(is_bridge_config),
-        "--allowedTools" => Flag::Value(|v| is_bridge_tool_list(v) || v == WEB_SEARCH_TOOL),
+        "--allowedTools" => Flag::Value(is_allowed_tool_list),
         _ => return None,
     })
 }
@@ -197,20 +200,24 @@ pub fn check_args(args: &[String]) -> Result<(), String> {
     if seen.contains(&"--mcp-config") && !seen.contains(&"--strict-mcp-config") {
         return Err("--mcp-config needs --strict-mcp-config".into());
     }
-    // --allowedTools: the RealmNest bridge's tools, or WebSearch alone on a search turn (--tools WebSearch)
-    if seen.contains(&"--allowedTools") && !seen.contains(&"--mcp-config") {
+    // --allowedTools: the RealmNest bridge's tools (with --mcp-config) and/or WebSearch, which needs --tools WebSearch
+    if seen.contains(&"--allowedTools") {
         let value_of = |flag: &str| {
             args.iter()
                 .position(|a| a == flag)
                 .and_then(|i| args.get(i + 1))
                 .map(String::as_str)
         };
-        if value_of("--allowedTools") != Some(WEB_SEARCH_TOOL)
-            || value_of("--tools") != Some(WEB_SEARCH_TOOL)
-        {
+        let allowed = value_of("--allowedTools").unwrap_or_default();
+        if !seen.contains(&"--mcp-config") && allowed != WEB_SEARCH_TOOL {
             return Err(
                 "--allowedTools is only for the RealmNest bridge or a WebSearch turn".into(),
             );
+        }
+        if allowed.split(',').any(|t| t == WEB_SEARCH_TOOL)
+            && value_of("--tools") != Some(WEB_SEARCH_TOOL)
+        {
+            return Err("WebSearch in --allowedTools needs --tools WebSearch".into());
         }
     }
     if !seen.contains(&"--output-format") {

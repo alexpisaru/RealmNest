@@ -153,7 +153,7 @@ interface WebSearchEngine {
 
 ### A backend's own search in chats and agent tasks
 
-A connection whose adapter declares `nativeWebInTurns` (today only ChatGPT, through Codex) searches the web itself when the chat or agent has **Web** on and the Knowledge mode is not STRICT: the runtime sends `providerWeb: true` with the turn and tells the model, in the web rules, that it has its own web search (instead of "Web search is not configured"). Codex then runs with `web_search="live"` next to the turn's session or RealmNest tools (see PROVIDERS.md). Pages Codex finds and reads that way are read on OpenAI's side, not through this layer: they get no W label and are not citation-checked; the model is asked to name them (title and address). With Web off nothing changes.
+A connection whose adapter declares `nativeWebInTurns` (ChatGPT through Codex, Claude through Claude Code) searches the web itself when the chat or agent has **Web** on and the Knowledge mode is not STRICT: the runtime sends `providerWeb: true` with the turn and tells the model, in the web rules, that it has its own web search (instead of "Web search is not configured"). Codex then runs with `web_search="live"`, Claude Code with its `WebSearch` tool, next to the turn's session or RealmNest tools (see PROVIDERS.md). Pages found and read that way are read on OpenAI's or Anthropic's side, not through this layer: they get no W label and are not citation-checked; the model is asked to name them (title and address). With Web off nothing changes.
 
 ## Errors
 

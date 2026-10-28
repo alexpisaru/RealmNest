@@ -252,6 +252,7 @@ claude -p --output-format stream-json --verbose --include-partial-messages
 ```
 
 - **Tools.** Every built-in tool is off unless the request lists some (`--tools ""`).
+- **Web on in a chat or agent task:** with `providerWeb` the turn gets `--tools WebSearch` (Claude Code's own search, Anthropic's side) and WebSearch in `--allowedTools`, alone (`WEB_PROMPT`) or after the RealmNest bridge tools (`BRIDGE_WEB_PROMPT`). The allowlist accepts WebSearch in `--allowedTools` only with `--tools WebSearch`, at most once, and next to nothing but `mcp__realmnest__…` tools. A resumed session keeps the system prompt of its first turn, so turning Web on later in a Claude chat gives the tool without the prompt line about it.
 - **System prompt.** With no tools, Claude Code's agentic prompt is replaced (`--system-prompt`) by a short plain-assistant prompt plus the caller's; otherwise the caller's prompt is appended. Without this, a tool-less model acted out tool calls as text.
 - **Sessions.** `session: new` lets Claude Code keep the session under its own id; `resume` passes `--resume <id>`. The adapter is stateless, so sessions survive a restart. A resume that Claude cannot find (`No conversation found…` on stderr) becomes `run.failed` with `session_not_found`.
 - **Permission prompts.** Nobody can answer one in print mode, so `--permission-prompts none` denies anything that would ask.

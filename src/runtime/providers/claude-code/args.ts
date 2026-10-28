@@ -26,6 +26,8 @@ export interface TurnArgsOptions {
   bridge?: { configPath: string; tools: string[] };
   /** a web search turn: only the WebSearch tool, allowed without a prompt */
   webSearch?: boolean;
+  /** Web on for this chat or agent (ProviderTurnRequest.providerWeb): WebSearch next to the turn's other tools */
+  web?: boolean;
   /** `--effort` level (one of CLAUDE_EFFORTS; the provider drops anything else) */
   effort?: string;
 }
@@ -39,6 +41,13 @@ export const PLAIN_PROMPT = 'You are an assistant in RealmNest. In this conversa
 /** a turn with RealmNest tools (bridge): only those tools exist, Claude's own are off */
 export const BRIDGE_PROMPT =
   'You are an assistant in RealmNest. Your only tools are the RealmNest tools offered here (their names start with mcp__realmnest__); you have no other tools, files, web or memory. Use a tool when it helps, wait for its result (RealmNest may ask the user first), then answer in plain text.';
+
+/** a turn with Web on and no RealmNest tools: Claude's own WebSearch only */
+export const WEB_PROMPT = 'You are an assistant in RealmNest. Your only tool is WebSearch, your own web search: use it when the answer needs current or outside information. You have no files, commands or memory. Answer in plain text and name the pages you used (title and address).';
+
+/** a turn with RealmNest tools and Web on: those tools plus Claude's own WebSearch */
+export const BRIDGE_WEB_PROMPT =
+  'You are an assistant in RealmNest. Your tools are the RealmNest tools offered here (their names start with mcp__realmnest__) and WebSearch, your own web search; you have no other tools, files or memory. Use a tool when it helps, wait for its result (RealmNest may ask the user first), then answer in plain text and name the web pages you used (title and address).';
 
 /** Claude Code's own web search tool (Anthropic's search) */
 export const WEB_SEARCH_TOOL = 'WebSearch';
@@ -73,16 +82,19 @@ export function turnArgs(o: TurnArgsOptions): string[] {
   if (o.model) args.push('--model', o.model);
   if (o.effort) args.push('--effort', o.effort);
   if (o.bridge) {
-    // RealmNest's own MCP server (with --strict-mcp-config: nothing else), and only its tools may run without a prompt
-    args.push('--mcp-config', o.bridge.configPath, '--allowedTools', o.bridge.tools.join(','));
-    args.push('--system-prompt', [BRIDGE_PROMPT, o.systemPrompt].filter(Boolean).join('\n\n'));
+    // RealmNest's own MCP server (with --strict-mcp-config: nothing else), and only its tools (and WebSearch with Web on) may run without a prompt
+    args.push('--mcp-config', o.bridge.configPath, '--allowedTools', [...o.bridge.tools, ...(o.web ? [WEB_SEARCH_TOOL] : [])].join(','));
+    args.push('--system-prompt', [o.web ? BRIDGE_WEB_PROMPT : BRIDGE_PROMPT, o.systemPrompt].filter(Boolean).join('\n\n'));
   } else if (o.webSearch) {
     // a search turn: Claude's own WebSearch (Anthropic's search) and nothing else, allowed without a prompt
     args.push('--system-prompt', [SEARCH_PROMPT, o.systemPrompt].filter(Boolean).join('\n\n'), '--allowedTools', WEB_SEARCH_TOOL);
+  } else if (o.web) {
+    // Web on, no RealmNest tools: WebSearch alone, allowed without a prompt
+    args.push('--system-prompt', [WEB_PROMPT, o.systemPrompt].filter(Boolean).join('\n\n'), '--allowedTools', WEB_SEARCH_TOOL);
   } else if (!o.tools.length) args.push('--system-prompt', [PLAIN_PROMPT, o.systemPrompt].filter(Boolean).join('\n\n'));
   else if (o.systemPrompt) args.push('--append-system-prompt', o.systemPrompt);
   // last, so this variadic flag can never swallow anything after it
-  args.push('--tools', o.webSearch && !o.bridge ? WEB_SEARCH_TOOL : o.tools.join(','));
+  args.push('--tools', o.web || (o.webSearch && !o.bridge) ? WEB_SEARCH_TOOL : o.tools.join(','));
   return args;
 }
 
@@ -92,7 +104,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MODEL = /^[A-Za-z0-9][A-Za-z0-9._:\-[\]]{0,79}$/;
 /** RealmNest's bridge configs: <absolute>/realmnest-bridge/<session>.json (Rust also checks it is RealmNest's own folder) */
 const BRIDGE_CONFIG = /^(?:[A-Za-z]:[\\/]|\/)(?:(?!\.\.)[^\0])*[\\/]realmnest-bridge[\\/][A-Za-z0-9_-]{1,64}\.json$/;
-const BRIDGE_TOOLS = /^mcp__realmnest__[A-Za-z0-9_-]{1,64}(?:,mcp__realmnest__[A-Za-z0-9_-]{1,64}){0,31}$/;
+const BRIDGE_TOOL = /^mcp__realmnest__[A-Za-z0-9_-]{1,64}$/;
+
+/** --allowedTools: RealmNest bridge tools (at most 32) and WebSearch (at most once), nothing else */
+function isAllowedToolList(v: string): boolean {
+  const list = v.split(',');
+  const bridge = list.filter((t) => BRIDGE_TOOL.test(t)).length;
+  const web = list.filter((t) => t === WEB_SEARCH_TOOL).length;
+  return !!v && bridge <= 32 && web <= 1 && bridge + web === list.length;
+}
 
 /** flag → null (no value) or a check for its value */
 const FLAGS: Record<string, ((v: string) => boolean) | null> = {
@@ -111,10 +131,10 @@ const FLAGS: Record<string, ((v: string) => boolean) | null> = {
   '--effort': (v) => CLAUDE_EFFORTS.includes(v),
   '--append-system-prompt': (v) => v.length > 0 && v.length <= 20_000 && !v.includes('\0'),
   '--system-prompt': (v) => v.length > 0 && v.length <= 20_000 && !v.includes('\0'),
-  // Claude's own tools: none, or WebSearch alone on a search turn (never Bash, Read, Edit…)
+  // Claude's own tools: none, or WebSearch alone (a search turn, or Web on) — never Bash, Read, Edit…
   '--tools': (v) => v === '' || v === WEB_SEARCH_TOOL,
   '--mcp-config': (v) => v.length <= 1024 && BRIDGE_CONFIG.test(v),
-  '--allowedTools': (v) => BRIDGE_TOOLS.test(v) || v === WEB_SEARCH_TOOL,
+  '--allowedTools': isAllowedToolList,
 };
 
 
@@ -162,11 +182,12 @@ export function checkClaudeArgs(args: readonly string[]): string | null {
   if (seen.has('--system-prompt') && seen.has('--append-system-prompt')) return '--system-prompt and --append-system-prompt are exclusive';
   // the bridge only with RealmNest's own config, and never Claude's own MCP sources
   if (seen.has('--mcp-config') && !seen.has('--strict-mcp-config')) return '--mcp-config needs --strict-mcp-config';
-  // --allowedTools: the RealmNest bridge's tools, or WebSearch alone on a search turn (--tools WebSearch)
-  if (seen.has('--allowedTools') && !seen.has('--mcp-config')) {
-    const allowed = args[args.indexOf('--allowedTools') + 1];
-    const tools = args[args.indexOf('--tools') + 1];
-    if (allowed !== WEB_SEARCH_TOOL || tools !== WEB_SEARCH_TOOL) return '--allowedTools is only for the RealmNest bridge or a WebSearch turn';
+  // --allowedTools: the RealmNest bridge's tools (with --mcp-config) and/or WebSearch, which needs --tools WebSearch
+  if (seen.has('--allowedTools')) {
+    const allowed = args[args.indexOf('--allowedTools') + 1].split(',');
+    const tools = seen.has('--tools') ? args[args.indexOf('--tools') + 1] : undefined;
+    if (!seen.has('--mcp-config') && (allowed.length !== 1 || allowed[0] !== WEB_SEARCH_TOOL)) return '--allowedTools is only for the RealmNest bridge or a WebSearch turn';
+    if (allowed.includes(WEB_SEARCH_TOOL) && tools !== WEB_SEARCH_TOOL) return 'WebSearch in --allowedTools needs --tools WebSearch';
   }
   if (!seen.has('--output-format')) return '--output-format stream-json is required';
   if (!seen.has('--setting-sources')) return '--setting-sources user is required';
