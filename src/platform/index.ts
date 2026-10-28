@@ -8,6 +8,7 @@ import { TauriOllamaTransport, UnavailableOllamaTransport, type OllamaTransport 
 import { TauriCodexModels, UnavailableCodexModels, type CodexModelSource } from '../runtime/providers/codex/models';
 import { TauriCodexLogin, UnavailableCodexLogin, type CodexLoginTransport } from '../runtime/providers/codex/login';
 import { TauriTelegramTransport, UnavailableTelegramTransport, type TelegramTransport } from '../runtime/telegram/transport';
+import { TauriNotifyTransport, UnavailableNotifyTransport, type NotifyTransport } from '../runtime/notify/service';
 import { BridgeProcessRunner, bridgeToken } from '../runtime/process/bridge';
 import { TauriProcessRunner } from '../runtime/process/tauri';
 import { TauriSecretStore, UnavailableSecretStore, type SecretStore } from '../runtime/connections/secrets';
@@ -75,6 +76,11 @@ export function secretStore(): SecretStore {
 /** The Telegram bridge runs in the native host (the bot token never enters the page); none in browser builds. */
 export function telegramTransport(): TelegramTransport {
   return isDesktop() ? new TauriTelegramTransport() : new UnavailableTelegramTransport();
+}
+
+/** Windows notifications are shown by the native host; none in browser builds. */
+export function notifyTransport(): NotifyTransport {
+  return isDesktop() ? new TauriNotifyTransport() : new UnavailableNotifyTransport();
 }
 
 /** The OpenAI API and the local Ollama run in the native host (the OpenAI key never enters the page). */

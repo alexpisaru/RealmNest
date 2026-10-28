@@ -88,6 +88,7 @@ fn main() {
             "codex_login_start",
             "codex_login_cancel",
             "codex_logout",
+            "notify_show",
         ]),
     ))
     .expect("failed to run the Tauri build script");

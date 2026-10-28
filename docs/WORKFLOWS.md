@@ -101,4 +101,4 @@ The rail badge and the **Da fare** tab count: runs waiting for an approval, susp
 
 ## Not yet
 
-The drag-and-drop canvas; event triggers (a file arrives, a webhook); workflows calling workflows; Windows notifications; firing while RealmNest is closed (missed times are caught up on start).
+The drag-and-drop canvas; event triggers (a file arrives, a webhook); workflows calling workflows; firing while RealmNest is closed (missed times are caught up on start).

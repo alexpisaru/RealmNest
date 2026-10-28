@@ -130,6 +130,8 @@ export interface EventMap {
   /** agentId: the agent whose task runs this research (the world shows it researching) */
   'research.event': { id: string; phase: string; message: string; agentId?: string };
   'research.done': { id: string };
+  /** a run's status changed (e.g. its plan waits for approval); agentId: an agent's own research */
+  'research.status': { id: string; status: string; agentId?: string };
   // AI connections (no secrets, ever; see docs/CONNECTIONS.md)
   'connection.created': { connectionId: string; providerId: string; name: string };
   'connection.updated': { connectionId: string; fields: string[] };

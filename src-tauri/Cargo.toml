@@ -35,5 +35,5 @@ base64 = "0.22"
 [target.'cfg(windows)'.dependencies]
 # the hidden page reader (WebView2): the same versions Tauri already uses
 webview2-com = "0.39.1"
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com"] }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com", "Foundation", "Data_Xml_Dom", "UI_Notifications"] }
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_Security_Cryptography", "Win32_UI_Controls_Dialogs", "Win32_UI_Shell", "Win32_System_Com"] }

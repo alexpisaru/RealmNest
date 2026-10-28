@@ -5,6 +5,7 @@ mod commands_compat;
 mod commands_telegram;
 pub mod files;
 pub mod mcp;
+pub mod notify;
 pub mod openrouter;
 pub mod process;
 pub mod programs;
@@ -89,6 +90,7 @@ pub fn run() {
             commands::web_fetch,
             commands::web_render,
             commands::web_open,
+            commands::notify_show,
             commands::claude_login_start,
             commands::claude_login_code,
             commands::claude_login_cancel,

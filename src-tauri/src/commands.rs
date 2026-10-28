@@ -733,3 +733,22 @@ pub async fn files_report_pdf(
     crate::files::pdf::print_pdf(&app, &page, &out).await?;
     Ok(Some(out.to_string_lossy().into_owned()))
 }
+
+/// A Windows notification (docs/NOTIFICATIONS.md): plain text under RealmNest's name; a click
+/// brings the window back and is reported to the page with the notification's tag. With
+/// `background_only`, nothing shows while RealmNest's window is in front. Returns whether it showed.
+#[tauri::command]
+pub async fn notify_show(
+    app: tauri::AppHandle,
+    title: String,
+    body: String,
+    tag: Option<String>,
+    background_only: Option<bool>,
+) -> Result<bool, String> {
+    // WinRT calls: never on the main thread
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::notify::show(&app, &title, &body, tag, background_only.unwrap_or(false))
+    })
+    .await
+    .map_err(|_| "the notification could not be shown".to_string())?
+}

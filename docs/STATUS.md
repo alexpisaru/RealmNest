@@ -168,4 +168,4 @@ The art and worlds work happens in parallel, in a separate session: 10 worlds, c
 
 ## Recommended next milestone
 
-**Workflow follow-ups**: the drag-and-drop canvas, event triggers (a file arrives, a webhook), workflows calling workflows, Windows notifications. Or **Crew follow-ups**: crews across worlds, a shared working folder, crew Knowledge bases. Before them: publish 0.11.0 Public Beta and run the manual checks still open (Windows 10, offline, real scaling).
+**Workflow follow-ups**: the drag-and-drop canvas, event triggers (a file arrives, a webhook), workflows calling workflows. Or **Crew follow-ups**: crews across worlds, a shared working folder, crew Knowledge bases. Before them: publish 0.11.0 Public Beta and run the manual checks still open (Windows 10, offline, real scaling).

@@ -7,7 +7,7 @@ import type { Settings } from '../../persistence/repository';
 import type { TKey } from '../../i18n';
 import { AICapabilities } from '../AICapabilities';
 import { AIConnections } from '../AIConnections';
-import { useApp, useServices, useT } from '../context';
+import { useApp, useNotifier, useServices, useT } from '../context';
 import { Button, Segmented, Slider, Toggle } from '../kit';
 import { ThemePicker } from '../ThemePicker';
 import { ProfileEditor } from '../profile';
@@ -134,6 +134,38 @@ function DataCard() {
   );
 }
 
+/** Windows notifications while RealmNest is in the background (docs/NOTIFICATIONS.md) */
+function NotifyCard() {
+  const t = useT();
+  const notifier = useNotifier();
+  const n = notifier.settings();
+  const set = (p: Parameters<typeof notifier.setSettings>[0]) => void notifier.setSettings(p);
+  return (
+    <section className="set-card">
+      <h3>{t('nt.title')}</h3>
+      {!notifier.available ? (
+        <p className="muted small">{t('nt.unavailable')}</p>
+      ) : (
+        <>
+          <p className="muted small">{t('nt.sub')}</p>
+          <Toggle on={n.enabled} onChange={(enabled) => set({ enabled })} label={t('nt.enabled')} />
+          {n.enabled && (
+            <>
+              <Toggle on={n.approvals} onChange={(approvals) => set({ approvals })} label={t('nt.approvals')} sub={t('nt.approvalsSub')} />
+              <Toggle on={n.results} onChange={(results) => set({ results })} label={t('nt.results')} sub={t('nt.resultsSub')} />
+              <div className="row">
+                <Button size="sm" onClick={() => void notifier.test().catch(() => undefined)}>
+                  {t('nt.test')}
+                </Button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 export function SettingsScreen() {
   const st = useApp();
   const t = useT();
@@ -194,6 +226,8 @@ export function SettingsScreen() {
             <h3>{t('s.chat')}</h3>
             <Toggle on={s.aiTitles} onChange={(aiTitles) => set({ aiTitles })} label={t('settings.aiTitles')} sub={t('settings.aiTitlesSub')} />
           </section>
+
+          <NotifyCard />
 
           <section className="set-card">
             <h3>{t('tools.title')}</h3>

@@ -78,6 +78,8 @@ export class ResearchService {
   private runs = new Map<string, ResearchRun>();
   private order: string[] = [];
   private controllers = new Map<string, AbortController>();
+  /** the last status announced on the bus, per run (research.status) */
+  private announced = new Map<string, string>();
   /** a cancel that should still write what was found */
   private writeAfterStop = new Set<string>();
   private listeners = new Set<() => void>();
@@ -126,6 +128,7 @@ export class ResearchService {
       // a run that was working when RealmNest closed: it can resume
       if (isActive(r.status)) r.status = 'interrupted';
       this.runs.set(id, r);
+      this.announced.set(id, r.status);
       this.order.push(id);
     }
     this.changed();
@@ -821,6 +824,11 @@ export class ResearchService {
 
   private touch(run: ResearchRun, now = false) {
     run.updatedAt = this.now();
+    // a new status is announced once (notifications follow it: a plan to approve, a run that ended)
+    if (this.announced.get(run.id) !== run.status) {
+      this.announced.set(run.id, run.status);
+      this.bus.emit('research.status', { id: run.id, status: run.status, ...(run.owner.kind === 'agent' && { agentId: run.owner.agentId }) });
+    }
     this.changed();
     void this.persist(run, now);
   }

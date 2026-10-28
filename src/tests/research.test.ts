@@ -225,13 +225,17 @@ describe('the provider search engine', () => {
 
 describe('a research run', () => {
   it('clarify → plan (awaiting approval) → rounds → evidence → report → checks', async () => {
-    const { research, model, pages } = rig();
+    const { research, model, pages, bus } = rig();
+    // each new status is announced once on the bus (notifications follow it)
+    const statuses: string[] = [];
+    bus.on('research.status', (p) => void statuses.push(p.status));
     const run = await research.create({ question: 'Is Acme Pro worth it?', connectionId: 'm', model: 'claude-opus-5-5', clarify: true, preset: 'quick' });
     await until(() => research.get(run.id)!.clarifyingQuestions?.length === 2);
     expect(research.get(run.id)!.status).toBe('clarifying');
     await research.answer(run.id, ['Italy', '']);
     expect(research.get(run.id)!.brief).toContain('Which country? Italy');
     await until(() => research.get(run.id)!.status === 'awaiting_plan');
+    expect(statuses).toEqual(['clarifying', 'planning', 'awaiting_plan']);
     const plan = research.get(run.id)!.plan!;
     expect(plan).toMatchObject({ kind: 'product', language: 'it', subQuestions: [{ id: 'Q1' }, { id: 'Q2' }] });
     // nothing searched before the user approves

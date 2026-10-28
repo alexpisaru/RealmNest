@@ -7,7 +7,7 @@ import { flushAll } from './persistence/coalesced';
 import { shouldCollect, storageHealth } from './persistence/health';
 import { RealmNestRepository } from './persistence/repository';
 import { defaultAdapter, type StorageAdapter } from './persistence/storage';
-import { anthropicTransport, codexModels, fileStore, mcpBridgeTransport, mcpHost, ollamaTransport, openAiTransport, openRouterTransport, processRunner, secretStore, skillStore, telegramTransport, toolHost, webTransport } from './platform';
+import { anthropicTransport, codexModels, fileStore, mcpBridgeTransport, mcpHost, notifyTransport, ollamaTransport, openAiTransport, openRouterTransport, processRunner, secretStore, skillStore, telegramTransport, toolHost, webTransport } from './platform';
 import { TelegramBridge } from './runtime/telegram/bridge';
 import { agentSheet } from './ui/telegram/agentSheet';
 import { lookOf } from './ui/sessionManager';
@@ -23,6 +23,7 @@ import { registerMemoryTool } from './runtime/memory/tool';
 import { WebService } from './runtime/web/service';
 import { registerWebTools, WEB_FETCH_ID } from './runtime/web/tool';
 import { syncSearchEngines } from './runtime/web/connectionSearch';
+import { DesktopNotifier } from './runtime/notify/service';
 import { CrewService } from './runtime/crew/service';
 import { WorkflowLibrary } from './runtime/workflow/library';
 import { Orchestrator, type ToolRunner } from './runtime/workflow/orchestrator';
@@ -359,6 +360,47 @@ const telegram = new TelegramBridge({
     return { storageRef: stored.storageRef };
   },
 });
+// Windows notifications while RealmNest is in the background: approvals, and work that ended (docs/NOTIFICATIONS.md)
+const notifier = new DesktopNotifier({
+  bus,
+  storage: defaultAdapter(),
+  transport: notifyTransport(),
+  t: () => translator(lang()),
+  agentName: (id) => store.getState().characters.find((c) => c.id === id)?.name,
+  task: (taskId, runId) => {
+    const task = live.getTask(taskId);
+    return task && { title: task.title, step: !!task.crew || !!task.workflow || !!live.getRun(runId)?.parentRunId };
+  },
+  approval: (callId) => {
+    const p = toolRuntime.approvals().find((x) => x.call.id === callId);
+    const tool = p && toolRegistry.get(p.call.toolId);
+    return p && { who: p.requester, tool: tool?.title ?? tool?.name ?? p.call.toolId };
+  },
+  crew: (id) => {
+    const r = crews.run(id);
+    return r && { status: r.status, name: r.crew.name, ...(r.error && { error: r.error }) };
+  },
+  workflow: (id) => {
+    const r = orchestrator.get(id);
+    return r && { status: r.status, name: r.definition.name, ...(r.error && { error: r.error }) };
+  },
+  research: (id) => {
+    const r = research.get(id);
+    return r && { status: r.status, question: r.question, agent: r.owner.kind === 'agent', ...(r.error && { error: r.error }) };
+  },
+  // a click: the screen the notification was about (an approval prompt shows wherever you are)
+  open: (tag) => {
+    const at = tag.indexOf(':');
+    const [kind, id] = [tag.slice(0, at), tag.slice(at + 1)];
+    if (kind === 'crew') store.openCrew({ runId: id });
+    else if (kind === 'wf') store.openWorkflow({ runId: id, tab: 'runs' });
+    else if (kind === 'research') store.openResearch({ id });
+    else if (kind === 'agent') {
+      const c = store.getState().characters.find((x) => x.id === id);
+      if (c) (store.setWorld(c.worldId), store.navigate('simulation'));
+    }
+  },
+});
 const scheduler = new Scheduler(unlessSafe(defaultAdapter()), { definition: (id) => workflows.get(id), createRun: (d, inputs, trigger) => orchestrator.create(d, inputs, trigger) });
 // usage: every provider turn's tokens and cost, by connection, agent and chat (docs/USAGE.md)
 const usageOwner = (runId: string): UsageOwner => {
@@ -422,7 +464,7 @@ step('connections', () => connections.init())
     ]),
   )
   // Knowledge after artifacts: its stale check reads them
-  .then(() => Promise.all([step('knowledge', () => knowledge.init()), step('memory', () => memory.init()), step('web', () => web.init()), step('research', () => research.init()), step('usage', () => usage.init()), step('crews', () => crews.init()), step('workflows', () => workflows.init())]))
+  .then(() => Promise.all([step('knowledge', () => knowledge.init()), step('memory', () => memory.init()), step('web', () => web.init()), step('research', () => research.init()), step('usage', () => usage.init()), step('crews', () => crews.init()), step('workflows', () => workflows.init()), step('notifications', () => notifier.init())]))
   // the orchestrator after crews (crew nodes follow their runs); the scheduler after it (a catch-up creates runs)
   .then(() => step('orchestrator', () => orchestrator.init()))
   .then(() => (safe ? undefined : step('scheduler', () => scheduler.init())))
@@ -452,7 +494,7 @@ step('connections', () => connections.init())
     createRoot(rootEl).render(
       <StrictMode>
         <ErrorBoundary fallback={(error) => <RecoveryScreen error={error} lang={lang()} />}>
-          <ServicesProvider value={{ store, bus, sessions, providers, live, chat, connections, capabilities, tools, mcp, skills, files, artifacts, knowledge, embeddings, memory, web, research, usage, crews, workflows, orchestrator, scheduler, telegram }}>
+          <ServicesProvider value={{ store, bus, sessions, providers, live, chat, connections, capabilities, tools, mcp, skills, files, artifacts, knowledge, embeddings, memory, web, research, usage, crews, workflows, orchestrator, scheduler, telegram, notifier }}>
             <App />
           </ServicesProvider>
         </ErrorBoundary>
