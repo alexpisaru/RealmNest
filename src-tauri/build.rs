@@ -92,6 +92,8 @@ fn main() {
             "log_write",
             "log_read",
             "log_reveal",
+            "update_check",
+            "update_install",
         ]),
     ))
     .expect("failed to run the Tauri build script");

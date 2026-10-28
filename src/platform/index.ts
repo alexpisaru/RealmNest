@@ -10,6 +10,7 @@ import { TauriCodexLogin, UnavailableCodexLogin, type CodexLoginTransport } from
 import { TauriTelegramTransport, UnavailableTelegramTransport, type TelegramTransport } from '../runtime/telegram/transport';
 import { TauriNotifyTransport, UnavailableNotifyTransport, type NotifyTransport } from '../runtime/notify/service';
 import { TauriLogTransport, UnavailableLogTransport, type LogTransport } from '../runtime/diagnostics/log';
+import { TauriUpdateTransport, UnavailableUpdateTransport, type UpdateTransport } from '../runtime/update/service';
 import { BridgeProcessRunner, bridgeToken } from '../runtime/process/bridge';
 import { TauriProcessRunner } from '../runtime/process/tauri';
 import { TauriSecretStore, UnavailableSecretStore, type SecretStore } from '../runtime/connections/secrets';
@@ -77,6 +78,11 @@ export function secretStore(): SecretStore {
 /** The Telegram bridge runs in the native host (the bot token never enters the page); none in browser builds. */
 export function telegramTransport(): TelegramTransport {
   return isDesktop() ? new TauriTelegramTransport() : new UnavailableTelegramTransport();
+}
+
+/** Updates are checked, verified and installed by the native host (the updater plugin); none in browser builds. */
+export function updateTransport(): UpdateTransport {
+  return isDesktop() ? new TauriUpdateTransport() : new UnavailableUpdateTransport();
 }
 
 /** RealmNest's log file is written by the native host; the browser build keeps the entries in memory only. */

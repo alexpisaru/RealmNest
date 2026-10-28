@@ -136,7 +136,7 @@ Nothing is silently lost any more at the storage quota (banner, marker, skipped 
 
 ## Known limitations
 
-- Windows 10/11 only; needs the WebView2 Runtime; per-user installer, no automatic updates, not code-signed (SmartScreen warns).
+- Windows 10/11 only; needs the WebView2 Runtime; per-user installer, updates from GitHub releases (signed, installed only when you agree; [UPDATES.md](UPDATES.md)), not code-signed (SmartScreen warns on a manual install).
 - An abrupt stop can lose the last few seconds of changes (WebView2 commits local storage with a delay; seen in the 0.11.0 release test).
 - A new Claude connection needs a model chosen before the first chat (no Chat route by default).
 - Skills with more than 14,000 characters of instructions install but cannot run.

@@ -21,6 +21,7 @@ import type { Scheduler } from '../runtime/workflow/scheduler';
 import type { TelegramBridge } from '../runtime/telegram/bridge';
 import type { DesktopNotifier } from '../runtime/notify/service';
 import type { AppLog } from '../runtime/diagnostics/log';
+import type { UpdateService } from '../runtime/update/service';
 import type { SkillService } from '../runtime/skills/service';
 import type { ToolService } from '../runtime/tools/service';
 import { translator } from '../i18n';
@@ -55,6 +56,7 @@ export interface Services {
   telegram: TelegramBridge;
   notifier: DesktopNotifier;
   log: AppLog;
+  updates: UpdateService;
 }
 
 const Ctx = createContext<Services | null>(null);
@@ -152,6 +154,12 @@ export function useTelegram() {
   const { telegram } = useServices();
   useSyncExternalStore(telegram.subscribe, telegram.getVersion);
   return telegram;
+}
+
+export function useUpdates() {
+  const { updates } = useServices();
+  useSyncExternalStore(updates.subscribe, updates.getVersion);
+  return updates;
 }
 
 export function useNotifier() {

@@ -28,6 +28,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "publisher": "Marius Alexandru Pisaru",
     "copyright": "Copyright (C) 2026 Marius Alexandru Pisaru. Licensed under the GNU AGPL v3 or later.",
     "shortDescription": "A visual operating environment for AI agents",
@@ -55,6 +56,17 @@
         "headerImage": "installer/header.bmp",
         "sidebarImage": "installer/sidebar.bmp",
         "template": "installer/installer.nsi"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZDOTA5N0I4QTQ3RjcyNTIKUldSU2NuK2t1SmVRL0IzUlgvMm5sREthMWJZc3paeUgwTFZyRTFQQ0JHRlA4ek8rVmJNK1I0cmgK",
+      "endpoints": [
+        "https://github.com/alexpisaru/RealmNest/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

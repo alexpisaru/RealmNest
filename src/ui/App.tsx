@@ -5,6 +5,7 @@ import { useRendererReady } from './shared';
 import { CharacterCreator } from './CharacterCreator';
 import { ErrorBoundary, ScreenCrash } from './ErrorBoundary';
 import { StorageBanner } from './StorageBanner';
+import { UpdateNotice } from './update/UpdateViews';
 import { useApp, useServices } from './context';
 import { HomeScreen } from './screens/Home';
 import { Sidebar } from './Sidebar';
@@ -72,6 +73,7 @@ export function App() {
       {st.creator && <CharacterCreator />}
       <ToolApprovals />
       <StorageBanner />
+      <UpdateNotice />
       {st.toast?.text && (
         <div className="toast" role="status">
           {st.toast.text}

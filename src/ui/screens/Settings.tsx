@@ -17,6 +17,7 @@ import { WebSettings } from '../web/WebSettings';
 import { TelegramSettings } from '../telegram/TelegramSettings';
 import { APP_LABEL, APP_VERSION } from '../../version';
 import { diagnosticsName, diagnosticsReport } from '../../runtime/diagnostics/report';
+import { UpdateSettings } from '../update/UpdateViews';
 
 const fmtBytes = (n: number, lang: 'it' | 'en') => {
   const f = (v: number) => v.toLocaleString(lang === 'it' ? 'it-IT' : 'en-US', { maximumFractionDigits: 1 });
@@ -331,6 +332,8 @@ export function SettingsScreen() {
               <b>RealmNest OS</b> {APP_LABEL}. {t('s.about.agents', { n: st.characters.length })}
             </p>
             <p className="muted small">{t('s.about.modes')}</p>
+            <h3>{t('up.title')}</h3>
+            <UpdateSettings />
           </section>
         </div>
       )}

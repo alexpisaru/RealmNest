@@ -766,7 +766,9 @@ Function .onInstSuccess
     ${GetOptions} $CMDLINE "/R" $R0
     ${IfNot} ${Errors}
       ${GetOptions} $CMDLINE "/ARGS" $R0
-      nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" "$R0"
+      ; after an update RealmNest starts again, directly (see RunMainBinary: RunAsUser could hang)
+      SetOutPath "$INSTDIR"
+      Exec '"$INSTDIR\${MAINBINARYNAME}.exe" $R0'
     ${EndIf}
   ${EndIf}
 FunctionEnd

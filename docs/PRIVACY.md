@@ -13,6 +13,7 @@ RealmNest OS has **no telemetry, no analytics, no crash reporter and no update c
 | Claude Code / Codex CLIs | a Claude or ChatGPT account connection is used | prompts go to the CLI on this PC, which talks to Anthropic or OpenAI with your account; the CLIs' own data practices apply. Signing in opens the provider's page in your browser |
 | Telegram (`api.telegram.org`) | only after you set a bot token and pair an account | messages, agent answers, files and pictures you exchange with the bot |
 | GitHub (`api.github.com`, `raw.githubusercontent.com`) | only when you install or update a Skill from GitHub | read-only requests, no credentials |
+| GitHub (`github.com`, release downloads) | 15 seconds after start and every 6 hours, unless you turn the automatic check off (Settings › General › About); and when you install an update | a download of `latest.json` (and of the installer when you choose Update now), no credentials and nothing about you ([UPDATES.md](UPDATES.md)) |
 | any web address | only when Web is on for a chat or an agent, or for Deep Research, a Skill URL or an online MCP server you add | a normal page request (User-Agent `RealmNest/<version>`), public addresses only |
 | an online MCP server | only servers you add | the tool calls and their arguments; its secret headers / OAuth token, only to that server's own address |
 

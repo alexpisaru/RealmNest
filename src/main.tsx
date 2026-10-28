@@ -7,7 +7,7 @@ import { flushAll } from './persistence/coalesced';
 import { shouldCollect, storageHealth } from './persistence/health';
 import { RealmNestRepository } from './persistence/repository';
 import { defaultAdapter, type StorageAdapter } from './persistence/storage';
-import { anthropicTransport, codexModels, fileStore, logTransport, mcpBridgeTransport, mcpHost, notifyTransport, ollamaTransport, openAiTransport, openRouterTransport, processRunner, secretStore, skillStore, telegramTransport, toolHost, webTransport } from './platform';
+import { anthropicTransport, codexModels, fileStore, logTransport, updateTransport, mcpBridgeTransport, mcpHost, notifyTransport, ollamaTransport, openAiTransport, openRouterTransport, processRunner, secretStore, skillStore, telegramTransport, toolHost, webTransport } from './platform';
 import { TelegramBridge } from './runtime/telegram/bridge';
 import { agentSheet } from './ui/telegram/agentSheet';
 import { lookOf } from './ui/sessionManager';
@@ -25,6 +25,7 @@ import { registerWebTools, WEB_FETCH_ID } from './runtime/web/tool';
 import { syncSearchEngines } from './runtime/web/connectionSearch';
 import { DesktopNotifier } from './runtime/notify/service';
 import { AppLog, wireLog } from './runtime/diagnostics/log';
+import { UpdateService } from './runtime/update/service';
 import { CrewService } from './runtime/crew/service';
 import { WorkflowLibrary } from './runtime/workflow/library';
 import { Orchestrator, type ToolRunner } from './runtime/workflow/orchestrator';
@@ -414,6 +415,8 @@ const notifier = new DesktopNotifier({
     }
   },
 });
+// updates: signed releases from GitHub, installed only when the user agrees (docs/UPDATES.md)
+const updates = new UpdateService(updateTransport(), defaultAdapter(), { flush: () => Promise.all([flushAll(), appLog.flush()]), log: (level, message) => appLog[level]('update', message) });
 const scheduler = new Scheduler(unlessSafe(defaultAdapter()), { definition: (id) => workflows.get(id), createRun: (d, inputs, trigger) => orchestrator.create(d, inputs, trigger) });
 // usage: every provider turn's tokens and cost, by connection, agent and chat (docs/USAGE.md)
 const usageOwner = (runId: string): UsageOwner => {
@@ -485,6 +488,7 @@ step('connections', () => connections.init())
     // after the scheduler: Telegram reports what was missed while RealmNest was closed; it talks to the
     // network, so the window does not wait for it (I-4)
     if (!safe) void step('telegram', () => telegram.init());
+    void step('updates', () => updates.init());
     sessions.start();
     // music, the worlds' ambience and effects, all synthesised (docs/AUDIO.md)
     wireAudio(new AudioEngine(), store, bus);
@@ -507,7 +511,7 @@ step('connections', () => connections.init())
     createRoot(rootEl).render(
       <StrictMode>
         <ErrorBoundary fallback={(error) => <RecoveryScreen error={error} lang={lang()} />}>
-          <ServicesProvider value={{ store, bus, sessions, providers, live, chat, connections, capabilities, tools, mcp, skills, files, artifacts, knowledge, embeddings, memory, web, research, usage, crews, workflows, orchestrator, scheduler, telegram, notifier, log: appLog }}>
+          <ServicesProvider value={{ store, bus, sessions, providers, live, chat, connections, capabilities, tools, mcp, skills, files, artifacts, knowledge, embeddings, memory, web, research, usage, crews, workflows, orchestrator, scheduler, telegram, notifier, log: appLog, updates }}>
             <App />
           </ServicesProvider>
         </ErrorBoundary>

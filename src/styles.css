@@ -652,6 +652,39 @@ option {
   gap: 10px;
   align-items: center;
 }
+/* a new version of RealmNest (src/ui/update/UpdateViews.tsx): bottom right, out of the toast's way */
+.update-notice {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 58;
+  width: min(380px, calc(100vw - 40px));
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--panel-solid);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font-size: 13.5px;
+  line-height: 1.45;
+  animation: rise 0.22s ease;
+}
+.update-notice .row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.update-notice progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.update-notes {
+  max-height: 200px;
+  overflow: auto;
+  font-size: 13px;
+}
+
 .toast {
   position: fixed;
   bottom: 28px;

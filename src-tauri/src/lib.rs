@@ -14,6 +14,7 @@ pub mod secrets;
 pub mod skills;
 pub mod telegram;
 pub mod tools;
+pub mod update;
 pub mod web;
 
 use process::ProcessHost;
@@ -50,6 +51,9 @@ pub fn run() {
         .manage(programs::claude_login::ClaudeLogin::default())
         .manage(programs::codex_login::CodexLogin::default())
         .manage(mcp::http::HttpHost::new(Arc::new(mcp::KeyringSecrets)))
+        // updates: signed releases from GitHub (docs/UPDATES.md); the page reaches it only through update_*
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(update::PendingUpdate::default())
         .invoke_handler(tauri::generate_handler![
             commands::process_run,
             commands::process_cancel,
@@ -95,6 +99,8 @@ pub fn run() {
             commands::log_write,
             commands::log_read,
             commands::log_reveal,
+            update::update_check,
+            update::update_install,
             commands::claude_login_start,
             commands::claude_login_code,
             commands::claude_login_cancel,
