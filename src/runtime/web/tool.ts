@@ -16,7 +16,7 @@ export const WEB_SEARCH: ToolDefinition = {
   name: WEB_SEARCH_ID,
   title: 'Web search',
   description:
-    'Searches the public web with the search engine configured in RealmNest and returns candidate pages (title, URL, snippet). Results are for discovery only: read a page with web_fetch before using or citing it. If no engine is configured it answers SEARCH_PROVIDER_NOT_CONFIGURED.',
+    "Searches the public web (through the web search of one of the user's AI connections) and returns candidate pages (title, URL, snippet). Results are for discovery only: read a page with web_fetch before using or citing it. If search is off or no connection can search, it answers SEARCH_PROVIDER_NOT_CONFIGURED.",
   source: 'native',
   inputSchema: {
     type: 'object',
@@ -34,7 +34,8 @@ export const WEB_SEARCH: ToolDefinition = {
   risk: 'low',
   permissions: {},
   cancellable: false,
-  timeoutMs: 30_000,
+  // a search is a short turn of another connection (up to 2 minutes, then the next one in Auto)
+  timeoutMs: 180_000,
   version: '1',
   metadata: { runScoped: 'true', network: 'read' },
 };

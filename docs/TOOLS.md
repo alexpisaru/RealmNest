@@ -61,7 +61,7 @@ The registry refuses duplicate ids or names, bad ids, schemas that are not objec
 | `write_text_file` | medium | ask | creates or replaces a UTF-8 file of at most 256 KB, creating folders |
 | `search_knowledge` | low | allow | searches the Knowledge bases selected for this run and returns labelled passages (K1…); see [KNOWLEDGE.md](KNOWLEDGE.md) |
 | `web_fetch` | low | allow (ask for unseen addresses) | reads one public http(s) page through Rust (SSRF guard, limits) and returns its readable text as an untrusted `<web_page label="W1">` block; see [WEB.md](WEB.md) |
-| `web_search` | low | allow | searches through the configured compliant engine; **none in v1**: answers `SEARCH_PROVIDER_NOT_CONFIGURED`; results are discovery only (R1…), never cited |
+| `web_search` | low | allow | searches through the web search of one of the user's AI connections (Settings › Web: Auto, one connection, None; see [WEB.md](WEB.md#search-engines)); none usable: `SEARCH_PROVIDER_NOT_CONFIGURED`; results are discovery only (R1…), never cited |
 
 `search_knowledge` is **run-scoped** (`metadata.runScoped`): it is never in the general tool pool, the Tools switch or a Skill picker. RealmNest adds it to a run that has Knowledge (when the model can call tools), and in STRICT mode it is the only tool besides the active Skills' tools. The executor finds the run by `runId` and searches only that run's bases; the model cannot name a base or a file.
 

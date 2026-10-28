@@ -154,7 +154,6 @@ The art and worlds work happens in parallel, in a separate session: 10 worlds, c
   - the grounding check is lexical only;
   - no model-based reranker.
 - **Web:**
-  - the `web_search` tool of chats and agents has no engine yet (Deep Research searches through its own connection);
   - the hidden reader now goes through RealmNest's guard proxy (public addresses only, no DNS rebinding); it stays a fallback that can be switched off;
   - lists styled as menus are dropped with navigation (some home-page news lists);
   - no logins, cookies, OCR or compressed transfer.

@@ -34,7 +34,7 @@ import { knowledgeTools, STRICT_NOTHING_FOUND, type KnowledgeRunner } from '../k
 import { withContext, type MemoryRunner } from '../memory/run';
 import { SEARCH_MEMORY_ID } from '../memory/tool';
 import type { WebRunner } from '../web/run';
-import { WEB_TOOL_IDS } from '../web/tool';
+import { WEB_FETCH_ID, WEB_TOOL_IDS } from '../web/tool';
 
 export interface ConversationRuntimeOptions {
   /** an agent's configuration (LiveRuntime.agent) */
@@ -533,7 +533,8 @@ export class ConversationRuntime {
     const base = skillTools ? [...skillTools, ...(c.toolsEnabled ? all() : [])] : c.toolsEnabled ? all() : undefined;
     const withKnowledge = knowledgeTools(sel, canSearch, base, skillTools);
     const withMemory = memoryTool && sel?.mode !== 'strict' ? [...(withKnowledge ?? []), SEARCH_MEMORY_ID] : withKnowledge;
-    const wanted = webTools ? [...(withMemory ?? []), ...WEB_TOOL_IDS] : withMemory;
+    // a model with its own web search reads pages with web_fetch, but never searches twice
+    const wanted = webTools ? [...(withMemory ?? []), ...(providerWeb ? [WEB_FETCH_ID] : WEB_TOOL_IDS)] : withMemory;
     const offer = wanted?.length ? this.opts.tools?.offer(c.connectionId, c.model, [...new Set(wanted)], undefined, c.workspace) : undefined;
     // the files this run may hand to its tools: this conversation's attachments, nothing else
     const files = c.messages.flatMap((m) => (m.attachments ?? []).filter((a) => a.storageRef)).map((a) => ({ id: a.id, name: a.name, mime: a.mime, storageRef: a.storageRef! }));

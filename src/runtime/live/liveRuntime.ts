@@ -47,7 +47,7 @@ import { knowledgeTools, STRICT_NOTHING_FOUND, type KnowledgeRunner } from '../k
 import { withContext, type MemoryRunner } from '../memory/run';
 import { SEARCH_MEMORY_ID } from '../memory/tool';
 import type { WebRunner } from '../web/run';
-import { WEB_TOOL_IDS } from '../web/tool';
+import { WEB_FETCH_ID, WEB_TOOL_IDS } from '../web/tool';
 import { MAX_OUTPUT_CHARS, RUNTIME_SCHEMA, type RuntimeRepository, type RuntimeSnapshot } from './repository';
 
 export const DEFAULT_PROVIDER_ID = 'claude-code';
@@ -435,7 +435,8 @@ export class LiveRuntime implements AgentRuntime {
     // the agent's tools (with Skills: only what they need, then the agent's own), when its model can call them
     const withKnowledge = knowledgeTools(sel, canSearch, skill ? skill.toolIds : (def.allowedToolIds ?? []), skill?.toolIds) ?? [];
     const withMemory = memoryTool && sel?.mode !== 'strict' ? [...withKnowledge, SEARCH_MEMORY_ID] : withKnowledge;
-    const toolIds = webTools ? [...withMemory, ...WEB_TOOL_IDS] : withMemory;
+    // a model with its own web search reads pages with web_fetch, but never searches twice
+    const toolIds = webTools ? [...withMemory, ...(providerWeb ? [WEB_FETCH_ID] : WEB_TOOL_IDS)] : withMemory;
     const offer = toolIds.length ? this.opts.tools?.offer(connectionId, model, toolIds, def.toolPermissions, def.workspace) : undefined;
     // the files its tools may read: this task's attachments, nothing else (run scoping)
     const files = (task.attachments ?? []).filter((a) => a.storageRef).map((a) => ({ id: a.id, name: a.name, mime: a.mime, storageRef: a.storageRef! }));

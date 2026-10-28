@@ -143,7 +143,7 @@ Nothing is silently lost any more at the storage quota (banner, marker, skipped 
 - Very large tool results through Claude Code are stored by Claude Code where the model cannot read them.
 - Most data lives in WebView2 local storage (about 5 million characters per app); the app warns when a save fails. Back up from Settings › General › Data.
 - No OCR: scanned PDFs have no text. Very large PDFs may be read partially (with a warning).
-- Web: public pages only, no logins or cookies, no search engine of its own (Deep Research uses the provider's search).
+- Web: public pages only, no logins or cookies, web search goes through an AI connection that can search (Claude, ChatGPT, the Anthropic API, OpenRouter).
 - Claude, ChatGPT and Ollama need their own programs installed; ChatGPT through Codex has no images or streaming.
 - Telegram works only while RealmNest is open; voice messages are not transcribed.
 - Some provider hints and error details from programs are in English.

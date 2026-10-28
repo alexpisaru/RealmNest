@@ -16,7 +16,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type { EventBus } from '../../core/events';
-import { DEFAULT_WEB_SETTINGS, WEB_LIMITS, WebError, type WebCitation, type WebErrorCode, type WebPage, type WebRunRecord, type WebSearchEngineInfo, type WebSearchOptions, type WebSearchResult, type WebSettings, type WebSource } from '../../domain/web';
+import { AUTO_ENGINE, DEFAULT_WEB_SETTINGS, OFF_ENGINE, WEB_LIMITS, WebError, type WebCitation, type WebErrorCode, type WebPage, type WebRunRecord, type WebSearchEngineInfo, type WebSearchOptions, type WebSearchResult, type WebSettings, type WebSource } from '../../domain/web';
 import type { StorageAdapter } from '../../persistence/storage';
 import { verifyGrounding, citedLabels } from '../knowledge/grounding';
 import { extractDocument } from '../knowledge/extract';
@@ -184,8 +184,9 @@ export class WebService {
       ...DEFAULT_WEB_SETTINGS,
       ...(typeof raw?.defaultCount === 'number' && { defaultCount: Math.min(WEB_LIMITS.resultsMax, Math.max(1, raw.defaultCount)) }),
       ...(typeof raw?.renderFallback === 'boolean' && { renderFallback: raw.renderFallback }),
-      // an engine id from storage counts only if that engine exists in this build
-      ...(typeof raw?.searchEngine === 'string' && { searchEngine: raw.searchEngine }),
+      // an engine id from storage counts only once that engine is registered (else: auto); before 0.13 the
+      // slot had no choice and stored null, which is the default (auto) now
+      ...(typeof raw?.searchEngine === 'string' && raw.searchEngine && { searchEngine: raw.searchEngine }),
     };
     this.changed();
   }
@@ -213,21 +214,26 @@ export class WebService {
   }
   async setSettings(patch: Partial<WebSettings>) {
     this.settingsState = { ...this.settingsState, ...patch };
-    if (patch.searchEngine && !this.engines.has(patch.searchEngine)) this.settingsState.searchEngine = null;
+    if (patch.searchEngine !== undefined && patch.searchEngine !== OFF_ENGINE && !this.engines.has(patch.searchEngine)) this.settingsState.searchEngine = AUTO_ENGINE;
     await this.storage.set(KEY, this.settingsState);
     this.changed();
   }
-  /** add a compliant engine to the slots (none ships in v1) */
+  /** add a compliant engine to the slots (or replace the one with its id) */
   registerEngine(engine: WebSearchEngine) {
     this.engines.set(engine.id, engine);
     this.changed();
   }
+  unregisterEngine(id: string) {
+    if (this.engines.delete(id)) this.changed();
+  }
   engineList(): WebSearchEngineInfo[] {
     return [...this.engines.values()].map(({ search: _s, ...info }) => info);
   }
+  /** the engine web_search uses: the chosen one, or auto when the chosen one is gone (its connection was removed) */
   engine(): WebSearchEngine | undefined {
     const id = this.settingsState.searchEngine;
-    return id ? this.engines.get(id) : undefined;
+    if (id === OFF_ENGINE) return undefined;
+    return this.engines.get(id) ?? this.engines.get(AUTO_ENGINE);
   }
   get searchConfigured() {
     return !!this.engine();

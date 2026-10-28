@@ -13,7 +13,7 @@ Web is **off by default**. You switch it on per chat (the globe in the composer)
 ## What v1 does, and what it does not
 
 - **`web_fetch`**: reads one public `http(s)` page — HTML, plain text, Markdown, JSON or PDF — safely, from Rust, and hands the model its readable text.
-- **`web_search`**: the tool, its contract, the result model, budgets and the engine slot exist, but **RealmNest v1 ships no search engine**. With no engine configured, `web_search` answers `SEARCH_PROVIDER_NOT_CONFIGURED` and the model is told to read the addresses you gave it and the links on pages it read.
+- **`web_search`**: its engine is the web search of one of your AI connections that has one (Claude or ChatGPT by account, the Anthropic API, OpenRouter's web plugin; see [Search engines](#search-engines)). So a model of **any** provider that can call tools can search, including providers added later. With search off, or no connection that can search, `web_search` answers `SEARCH_PROVIDER_NOT_CONFIGURED` and the model is told to read the addresses you gave it and the links on pages it read.
   - RealmNest does **not** scrape Bing, Google, DuckDuckGo, Brave or any other results page. Their `robots.txt` and terms disallow automated search, and scraping them breaks without warning (consent walls, "anomaly" pages, captchas). A future engine must be **compliant**: an official API the user chooses to configure (see [Search engines](#search-engines)).
 - **Deep Research** (multi-step plans, many searches, reports) is a separate milestone; see [Next: Deep Research](#next-deep-research).
 
@@ -128,7 +128,7 @@ A page's text is cut at 200,000 characters when extracted and 12,000 characters 
 
 | setting | default |
 | --- | --- |
-| Search engine | *No search engine configured* (the slot) |
+| Search engine | **Automatic** (the first connection that can search), one connection by name, or **None** |
 | Hidden reader for pages that need JavaScript | on (desktop) |
 | Results per search | 5 |
 | Cache | in memory, 15 minutes, 60 pages; **Clear cache** |
@@ -137,6 +137,16 @@ Settings are stored under the `web` key (no secrets). The cache is in memory onl
 
 ## Search engines
 
+**Through your AI connections** (`src/runtime/web/connectionSearch.ts`). `syncSearchEngines` keeps the engine list in step with the connections:
+- **Auto** (`auto`, the default): the connections whose adapter declares `webSearch` and that are usable (not signed out, unavailable or in error; with a model when the provider needs one), in this order: Claude (account), ChatGPT (account), Anthropic API, OpenRouter. A search goes to the first; when it fails (a ChatGPT rate limit, a signed-out account), the next one tries. None usable: `SEARCH_PROVIDER_NOT_CONFIGURED`.
+- **One connection** (`provider:<connection id>`): only that one. When it is removed, Auto takes over.
+- **None** (`off`): no search.
+
+Each search is one short provider turn (`providerSearchEngine`, the same as Deep Research): the results are the search's own (`search.results`), never addresses the model writes, then normalized and de-duplicated here. ChatGPT searches cost about 40,000 tokens of the plan each, which is why Claude comes first. The `web_search` tool waits up to 3 minutes. Settings stored before this (`searchEngine: null`) read as Auto.
+
+A model that searches by itself (`nativeWebInTurns`: Claude, ChatGPT) gets `web_fetch` but not `web_search` in its turns, so it never searches twice.
+
+**Other engines.** 
 `WebSearchEngine` (`src/runtime/web/service.ts`):
 
 ```ts
@@ -177,7 +187,7 @@ Simulation › Debug › **Web**: transport, hidden reader, engine slot, cache s
 
 ## Limits
 
-- No search engine in v1 (see above).
+- Search needs an AI connection that can search (Claude, ChatGPT, the Anthropic API or OpenRouter with credits); a model that cannot call tools gets no search, only the pages the user linked.
 - No logins, cookies, paywalls or forms; pages behind them answer `FETCH_ACCESS_DENIED` or return only their public part.
 - No OCR for scanned PDFs; no images, audio or video.
 - Gzip/brotli are not requested; servers that insist on compressed bodies may fail.
@@ -189,7 +199,7 @@ Simulation › Debug › **Web**: transport, hidden reader, engine slot, cache s
 
 Deep Research ([DEEP_RESEARCH.md](DEEP_RESEARCH.md)) builds on this layer without changing its rules.
 
-- **Search.** It searches with the research connection's own web search (`providerSearchEngine`, `WebService.searchWith`): Claude's `WebSearch`, Anthropic's `web_search` server tool, or OpenRouter's `web` plugin. The results come from the search itself (the `search.results` provider event). The `web_search` tool of chats and agents still has no engine.
+- **Search.** It searches with the research connection's own web search (`providerSearchEngine`, `WebService.searchWith`): Claude's `WebSearch`, Anthropic's `web_search` server tool, or OpenRouter's `web` plugin. The results come from the search itself (the `search.results` provider event). The `web_search` tool of chats and agents uses the same kind of engine (see Search engines).
 - **Reading.** Pages are read with the same `fetchPage`, with W provenance and the untrusted framing.
 - **Preview pictures.** `WebPage.image` is the page's own `og:image` / `twitter:image`, made absolute. It is never fetched with the page. `WebService.fetchImage` (Rust `web_fetch_image`) gets a picture under the page rules:
   - the SSRF guard and checked redirects;

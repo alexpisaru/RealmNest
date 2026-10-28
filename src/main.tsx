@@ -22,6 +22,7 @@ import { MemoryService, type CompleteFn } from './runtime/memory/service';
 import { registerMemoryTool } from './runtime/memory/tool';
 import { WebService } from './runtime/web/service';
 import { registerWebTools, WEB_FETCH_ID } from './runtime/web/tool';
+import { syncSearchEngines } from './runtime/web/connectionSearch';
 import { CrewService } from './runtime/crew/service';
 import { WorkflowLibrary } from './runtime/workflow/library';
 import { Orchestrator, type ToolRunner } from './runtime/workflow/orchestrator';
@@ -135,11 +136,22 @@ const extract: CompleteFn = async ({ connectionId, model, system, user, schema }
 };
 const memory = new MemoryService(defaultAdapter(), bus, { embeddings, complete: extract, agent: (id) => agentInfo(id) });
 registerMemoryTool(toolRegistry, memory);
-// Web: public pages read safely (web_fetch); search only through a compliant engine slot, none in v1 (docs/WEB.md)
+// Web: public pages read safely (web_fetch); web_search through the web search of an AI connection that has one (docs/WEB.md)
 // the Cast character atlases (about 2 MB) start loading now; figures switch over when ready
 preloadCast();
 const web = new WebService(defaultAdapter(), bus, webTransport());
 registerWebTools(toolRegistry, web);
+const UNUSABLE = new Set(['disconnected', 'auth_required', 'invalid_credentials', 'unavailable', 'error']);
+const syncSearch = syncSearchEngines(web, providers, () =>
+  connections
+    .list()
+    .filter((c) => connections.provider(c.id)?.capabilities.webSearch)
+    .map((c) => {
+      const needsModel = !!connections.catalog.get(c.providerId)?.requiresModel && !c.preferredModel;
+      return { id: c.id, name: c.name, providerId: c.providerId, usable: !UNUSABLE.has(c.status) && !needsModel, ...(c.preferredModel && { model: c.preferredModel }) };
+    }),
+);
+connections.subscribe(syncSearch);
 // Deep Research: the chosen connection's own web search + the Web layer + Knowledge (docs/DEEP_RESEARCH.md)
 const research = new ResearchService(defaultAdapter(), bus, providers, web, knowledge, (id) => {
   const c = connections.get(id);

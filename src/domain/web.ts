@@ -170,15 +170,23 @@ export interface WebRunRecord {
 }
 
 export interface WebSettings {
-  /** the configured search engine slot (none in v1: web_search answers SEARCH_PROVIDER_NOT_CONFIGURED) */
-  searchEngine: string | null;
+  /**
+   * the engine web_search uses: 'auto' (the web search of a connected AI connection that has one),
+   * 'off' (web_search answers SEARCH_PROVIDER_NOT_CONFIGURED), or a registered engine's id
+   */
+  searchEngine: string;
   /** results a search returns by default */
   defaultCount: number;
   /** read pages that need JavaScript in the hidden reader (desktop) */
   renderFallback: boolean;
 }
 
-export const DEFAULT_WEB_SETTINGS: WebSettings = { searchEngine: null, defaultCount: 5, renderFallback: true };
+/** WebSettings.searchEngine: the first AI connection that can search, in a fixed order (runtime/web/connectionSearch.ts) */
+export const AUTO_ENGINE = 'auto';
+/** WebSettings.searchEngine: no web search */
+export const OFF_ENGINE = 'off';
+
+export const DEFAULT_WEB_SETTINGS: WebSettings = { searchEngine: AUTO_ENGINE, defaultCount: 5, renderFallback: true };
 
 export const WEB_LIMITS = {
   searchesPerRun: 4,

@@ -26,6 +26,7 @@ import { decodeEntities, extractHtml } from '../runtime/web/html';
 import { neutralize, pageBlock, webRules } from '../runtime/web/prompt';
 import { WebService, type RawFetched, type WebSearchEngine, type WebTransport } from '../runtime/web/service';
 import { registerWebTools, WEB_FETCH_ID, WEB_SEARCH_ID } from '../runtime/web/tool';
+import { syncSearchEngines, type SearchConnection } from '../runtime/web/connectionSearch';
 import { dedupeResults, normalizeUrl, obviouslyBlocked, urlsIn } from '../runtime/web/url';
 
 // The web layer (docs/WEB.md): safe fetch + readable extraction, untrusted framing, W citations
@@ -283,14 +284,60 @@ const fakeEngine = (supports: Partial<WebSearchEngine['supports']> = {}): WebSea
 });
 
 describe('web_search', () => {
-  it('no engine configured: SEARCH_PROVIDER_NOT_CONFIGURED (v1 ships none)', async () => {
+  it('no engine registered: SEARCH_PROVIDER_NOT_CONFIGURED; an unknown id falls back to auto', async () => {
     const { web } = rig();
+    expect(web.settings().searchEngine).toBe('auto');
     expect(web.searchConfigured).toBe(false);
     expect(web.engineList()).toEqual([]);
     await expect(web.search('latest rust')).rejects.toMatchObject({ code: 'SEARCH_PROVIDER_NOT_CONFIGURED' });
     // an engine id kept from elsewhere does not configure anything
     await web.setSettings({ searchEngine: 'scraper' });
-    expect(web.settings().searchEngine).toBeNull();
+    expect(web.settings().searchEngine).toBe('auto');
+  });
+
+  it('web_search for every provider: auto uses the connections that can search, in order, and moves on when one fails', async () => {
+    const { web } = rig();
+    const calls: string[] = [];
+    // a connection's search turn: claude-1 is signed out, codex-1 answers
+    const providers = {
+      run: (connectionId: string, _req: unknown, onEvent: (e: unknown) => void) => {
+        calls.push(connectionId);
+        const done = (async () => {
+          if (connectionId === 'claude-1') return { type: 'run.failed', error: { code: 'not_authenticated', message: 'Sign in to Claude.' } };
+          onEvent({ type: 'search.results', results: [{ url: 'https://blog.rust-lang.org/post', title: 'Rust 1.90' }] });
+          return { type: 'run.completed', text: 'done' };
+        })();
+        return { done, cancel: async () => undefined };
+      },
+    } as unknown as import('../runtime/providers/service').ProviderService;
+    let list: SearchConnection[] = [
+      { id: 'or-1', name: 'OpenRouter', providerId: 'openrouter', usable: false },
+      { id: 'codex-1', name: 'ChatGPT', providerId: 'codex', usable: true },
+      { id: 'claude-1', name: 'Claude', providerId: 'claude-code', usable: true },
+    ];
+    const sync = syncSearchEngines(web, providers, () => list);
+    expect(web.engineList().map((e) => e.id)).toEqual(['auto', 'provider:or-1', 'provider:codex-1', 'provider:claude-1']);
+    expect(web.searchConfigured).toBe(true);
+    const r = await web.search('rust release');
+    // Claude first (quicker, cheaper), then ChatGPT; the unusable OpenRouter is never asked
+    expect(calls).toEqual(['claude-1', 'codex-1']);
+    expect(r.results.map((x) => x.url)).toEqual(['https://blog.rust-lang.org/post']);
+    // one connection by name; when it is removed, auto again
+    await web.setSettings({ searchEngine: 'provider:codex-1' });
+    calls.length = 0;
+    await web.search('rust');
+    expect(calls).toEqual(['codex-1']);
+    list = list.filter((c) => c.id !== 'codex-1');
+    sync();
+    expect(web.engineList().map((e) => e.id)).not.toContain('provider:codex-1');
+    expect(web.engine()?.id).toBe('auto');
+    // off: no search at all
+    await web.setSettings({ searchEngine: 'off' });
+    expect(web.searchConfigured).toBe(false);
+    // no usable connection: a clear error, not a hang
+    await web.setSettings({ searchEngine: 'auto' });
+    list = [];
+    await expect(web.search('rust')).rejects.toMatchObject({ code: 'SEARCH_PROVIDER_NOT_CONFIGURED' });
   });
 
   it('a compliant engine in the slot: normalized, de-duplicated results; domains emulated; unsupported options reported', async () => {
@@ -314,7 +361,16 @@ describe('web_search', () => {
     await a.web.setSettings({ defaultCount: 7, renderFallback: false });
     const b = rig({ storage });
     await b.web.init();
-    expect(b.web.settings()).toMatchObject({ defaultCount: 7, renderFallback: false, searchEngine: null });
+    expect(b.web.settings()).toMatchObject({ defaultCount: 7, renderFallback: false, searchEngine: 'auto' });
+    // before this version the slot stored null: that is auto now; an explicit "off" stays off
+    await storage.set('web', { searchEngine: null, defaultCount: 5, renderFallback: true });
+    const c = rig({ storage });
+    await c.web.init();
+    expect(c.web.settings().searchEngine).toBe('auto');
+    await c.web.setSettings({ searchEngine: 'off' });
+    const d = rig({ storage });
+    await d.web.init();
+    expect(d.web.settings().searchEngine).toBe('off');
   });
 });
 
@@ -543,6 +599,9 @@ describe('chat and agents with the Web', () => {
     // the model is told it can search itself, not that search is not configured
     expect(own.requests[1].messages.at(-1)!.content).toContain('your own built-in web search');
     expect(own.requests[1].messages.at(-1)!.content).not.toContain('Web search is not configured');
+    // it reads pages with web_fetch, but never gets RealmNest's web_search on top of its own
+    expect(own.requests[1].toolSchemas?.map((t) => t.name)).toContain('web_fetch');
+    expect(own.requests[1].toolSchemas?.map((t) => t.name)).not.toContain('web_search');
     s.live.updateAgent('alex', { connectionId: 'm', webAccess: true });
     const task = s.live.startTask('alex', { prompt: 'Latest Rust?' });
     await until(() => s.live.getRun(task.run.id)?.status === 'completed');
@@ -555,6 +614,7 @@ describe('chat and agents with the Web', () => {
     const pr = p.chat.send(pc.id, 'Latest Rust?');
     await until(() => p.chat.run(pr.run.id)?.status === 'completed');
     expect(plain.requests[0].providerWeb).toBeUndefined();
+    expect(plain.requests[0].toolSchemas?.map((t) => t.name)).toEqual(expect.arrayContaining(['web_search', 'web_fetch']));
   });
 
   it('Knowledge + Web: [K] and [W] resolve separately; each check ignores the other family', async () => {
