@@ -15,6 +15,7 @@ import { fileMessage } from './files/importFiles';
 import { Button } from './kit';
 import { defaultModelLabel, ModelPicker } from './ModelPicker';
 import { EffortSelect, useEfforts } from './chat/EffortPicker';
+import { Markdown } from './chat/Markdown';
 import { ToolCallList } from './tools/ToolCalls';
 import { AgentTools } from './tools/ToolSettings';
 import { AgentSkills } from './skills/AgentSkills';
@@ -238,9 +239,9 @@ export function LiveTaskPanel({ agentId }: { agentId: string }) {
             ) : null;
           })()}
           <ToolCallList runId={shown.id} />
-          <pre className="live-out" aria-live="polite">
-            <CitedText text={(shown.status === 'completed' ? (shown.result ?? shown.output) : shown.output) || (active ? '…' : '—')} record={shown.status === 'completed' ? shown.knowledge : undefined} web={shown.status === 'completed' ? shown.web : undefined} render={(x) => x} />
-          </pre>
+          <div className="live-out" aria-live="polite">
+            <Markdown text={(shown.status === 'completed' ? (shown.result ?? shown.output) : shown.output) || (active ? '…' : '—')} plain={(x) => <CitedText text={x} record={shown.status === 'completed' ? shown.knowledge : undefined} web={shown.status === 'completed' ? shown.web : undefined} render={(y) => y} />} />
+          </div>
           <CitationPanel record={shown.knowledge} />
           <WebSources record={shown.web} />
           <MemoryUsed record={shown.memory} />

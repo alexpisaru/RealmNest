@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Chat answers and agent results show their formatting.** Markdown is drawn instead of shown as text: headings, lists (nested, numbered, tasks), tables, quotes, code blocks with a Copy button, rules, bold, italics, strikethrough, inline code and links. Links (http and https only) open in your browser; [K]/[W] citations still become chips. Nothing is rendered as HTML (src/ui/chat/Markdown.tsx, mdParse.ts; tests in src/tests/markdown.test.ts).
+
 ## 0.12.0 Public Beta (2026-10-26)
 
 ChatGPT on the web, and fixes. Release notes: [docs/RELEASE_NOTES_0.12.0.md](docs/RELEASE_NOTES_0.12.0.md).

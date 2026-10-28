@@ -19,6 +19,7 @@ import { EffortPicker, useEfforts } from '../chat/EffortPicker';
 import { UsageRing } from '../usage/UsageRing';
 import { AgentPicker } from '../chat/AgentPicker';
 import { ChatComposer } from '../chat/ChatComposer';
+import { Markdown } from '../chat/Markdown';
 import { ArtifactStrip, SkillChips, SkillsUsed, StoredAttachment, useArtifacts, usePendingFiles } from '../files/FileViews';
 import { fileMessage } from '../files/importFiles';
 import type { SkillCatalogEntry } from '../../runtime/skills/mentions';
@@ -480,7 +481,15 @@ function Message({
       {m.role === 'user' && m.skillIds?.length ? <SkillChips ids={m.skillIds} catalog={catalog} /> : null}
       {m.role === 'assistant' && m.runId && <SkillsUsed refs={chat.run(m.runId)?.skills} />}
       {m.role === 'assistant' && <ToolCallList runId={m.runId} />}
-      <div className="msg-body">{m.content ? <CitedText text={m.content} record={knowledge} web={web} render={(x) => <Inline text={x} />} /> : m.status === 'streaming' ? <span className="typing" aria-label={t('a.chat.writing')} /> : ''}</div>
+      <div className="msg-body">
+        {!m.content ? (
+          m.status === 'streaming' ? <span className="typing" aria-label={t('a.chat.writing')} /> : ''
+        ) : m.role === 'assistant' ? (
+          <Markdown text={m.content} plain={(x) => <CitedText text={x} record={knowledge} web={web} render={(y) => y} />} />
+        ) : (
+          <CitedText text={m.content} record={knowledge} web={web} render={(x) => <Inline text={x} />} />
+        )}
+      </div>
       {m.role === 'assistant' && m.status === 'complete' && <CitationPanel record={knowledge} />}
       {m.role === 'assistant' && m.status === 'complete' && <WebSources record={web} />}
       {m.role === 'assistant' && m.status === 'complete' && m.runId && <MemoryUsed record={chat.run(m.runId)?.memory} />}
