@@ -16,6 +16,7 @@ import { McpSettings } from '../mcp/McpSettings';
 import { WebSettings } from '../web/WebSettings';
 import { TelegramSettings } from '../telegram/TelegramSettings';
 import { APP_LABEL, APP_VERSION } from '../../version';
+import { diagnosticsName, diagnosticsReport } from '../../runtime/diagnostics/report';
 
 const fmtBytes = (n: number, lang: 'it' | 'en') => {
   const f = (v: number) => v.toLocaleString(lang === 'it' ? 'it-IT' : 'en-US', { maximumFractionDigits: 1 });
@@ -130,6 +131,59 @@ function DataCard() {
       <Button tone="danger" onClick={() => window.confirm(t('s.data.resetConfirm')) && void store.resetDemo().then(() => store.toast(t('s.data.restored')))}>
         {t('settings.reset')}
       </Button>
+    </section>
+  );
+}
+
+/** Settings › Diagnostics: the log file and a report to send with a problem (docs/DIAGNOSTICS.md) */
+function DiagnosticsCard() {
+  const st = useApp();
+  const t = useT();
+  const { store, files, log, connections, mcp, chat, crews, workflows, research } = useServices();
+  const desktop = isDesktop();
+  const exportReport = async () => {
+    try {
+      const health = storageHealth.getSnapshot();
+      const text = diagnosticsReport({
+        app: 'RealmNest OS',
+        version: APP_LABEL,
+        at: Date.now(),
+        userAgent: navigator.userAgent,
+        language: st.settings.language,
+        desktop,
+        connections: connections.list().map((c) => ({ providerId: c.providerId, status: c.status })),
+        mcp: mcp.list().map((c) => ({ status: mcp.state(c.id).status, tools: mcp.state(c.id).tools.length })),
+        storage: { writeFailures: health.writeFailures.length, unreadable: health.unreadable.map((u) => u.key), previousSessionWriteFailure: health.previousSessionWriteFailure, startupIssues: health.startupIssues.map((i) => i.service) },
+        counts: { agents: st.characters.length, chats: chat.list().length, crews: crews.list().length, workflows: workflows.all().length, research: research.list().length },
+        logFile: desktop ? await log.read() : '',
+        recent: log.recent(),
+      });
+      const name = diagnosticsName();
+      if (desktop) {
+        // the same path as the backup: the native Save dialog
+        const stored = await files.put(new TextEncoder().encode(text));
+        const path = await files.exportCopy(stored.storageRef, name);
+        if (path) store.toast(t('dg.exported', { path }));
+      } else {
+        const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      }
+    } catch (err) {
+      store.toast(t('dg.failed', { error: err instanceof Error ? err.message : String(err) }));
+    }
+  };
+  return (
+    <section className="set-card">
+      <h3>{t('dg.title')}</h3>
+      <p className="muted small">{t(desktop ? 'dg.sub' : 'dg.subBrowser')}</p>
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <Button onClick={() => void exportReport()}>{t('dg.export')}</Button>
+        {desktop && <Button onClick={() => void log.reveal().catch((err) => store.toast(t('dg.failed', { error: String(err) })))}>{t('dg.reveal')}</Button>}
+      </div>
     </section>
   );
 }
@@ -268,6 +322,8 @@ export function SettingsScreen() {
           </section>
 
           <DataCard />
+
+          <DiagnosticsCard />
 
           <section className="set-card">
             <h3>{t('s.about')}</h3>

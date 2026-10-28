@@ -752,3 +752,55 @@ pub async fn notify_show(
     .await
     .map_err(|_| "the notification could not be shown".to_string())?
 }
+
+/// One entry of RealmNest's log, as the page sends it (already redacted; see docs/DIAGNOSTICS.md).
+#[derive(serde::Deserialize)]
+pub struct LogLine {
+    at: u64,
+    level: String,
+    source: String,
+    message: String,
+}
+
+/// Append the page's entries to the log file (at most 200 at a time).
+#[tauri::command]
+pub fn log_write(
+    log: tauri::State<'_, std::sync::Arc<crate::applog::AppLog>>,
+    entries: Vec<LogLine>,
+) -> Result<(), String> {
+    if entries.len() > 200 {
+        return Err("too many log entries at once".into());
+    }
+    let now = crate::applog::now_ms();
+    for e in entries {
+        // the page's time, unless it is far off (a wrong clock, a bad value)
+        let at = if e.at.abs_diff(now) < 86_400_000 {
+            e.at
+        } else {
+            now
+        };
+        log.write(at, &e.level, &e.source, &e.message);
+    }
+    Ok(())
+}
+
+/// The newest part of the log file, for a diagnostics report.
+#[tauri::command]
+pub async fn log_read(
+    log: tauri::State<'_, std::sync::Arc<crate::applog::AppLog>>,
+) -> Result<String, String> {
+    let log = log.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || log.read())
+        .await
+        .map_err(|_| "the log could not be read".to_string())
+}
+
+/// The log file, selected in Explorer.
+#[tauri::command]
+pub fn log_reveal(
+    log: tauri::State<'_, std::sync::Arc<crate::applog::AppLog>>,
+) -> Result<(), String> {
+    let dir = log.dir().ok_or("RealmNest has no data folder")?;
+    crate::files::dialog::reveal(&dir.join("realmnest.log"))
+        .map_err(|_| "the file manager could not be opened".to_string())
+}

@@ -31,7 +31,7 @@ Deep Research searches through the connection's own provider (Claude's web searc
 | exports, reports, exported Skills, backups | `Documents\RealmNest Exports`, `Documents\RealmNest Skills` (if Documents is in OneDrive, these files sync with it) |
 | your agents' work folders | the folders you choose |
 | the program | `%LOCALAPPDATA%\RealmNest OS\` (`realmnest-os.exe`, `uninstall.exe`), a Start-menu shortcut, and an entry under Settings › Apps (per-user install, no administrator rights) |
-| logs | none are written by RealmNest |
+| logs | `%LOCALAPPDATA%app.nestra.desktoplogsealmnest.log` (and `.1`, `.2`): errors and starts, redacted, never prompts, answers or file contents; at most about 3 MB ([DIAGNOSTICS.md](DIAGNOSTICS.md)). A diagnostics report is saved only when you export one. |
 | Claude Code's own data | when you use a Claude account, the Claude Code CLI keeps its sessions, and sometimes large tool results, in its own folder `%USERPROFILE%\.claude` (Claude Code's behaviour, not RealmNest's) |
 
 ## Backup, reset, uninstall

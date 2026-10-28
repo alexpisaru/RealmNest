@@ -1,4 +1,5 @@
 pub mod anthropic;
+pub mod applog;
 mod commands;
 mod commands_codex;
 mod commands_compat;
@@ -91,6 +92,9 @@ pub fn run() {
             commands::web_render,
             commands::web_open,
             commands::notify_show,
+            commands::log_write,
+            commands::log_read,
+            commands::log_reveal,
             commands::claude_login_start,
             commands::claude_login_code,
             commands::claude_login_cancel,
@@ -139,6 +143,16 @@ pub fn run() {
         .setup(|app| {
             // launches the user approved live in the app's own data folder, written only here
             let data = app.path().app_local_data_dir().ok();
+            // RealmNest's own log (docs/DIAGNOSTICS.md): starts, native crashes and what the page reports
+            let log = Arc::new(applog::AppLog::new(data.as_ref().map(|d| d.join("logs"))));
+            applog::log_panics(log.clone());
+            log.write(
+                applog::now_ms(),
+                "info",
+                "app",
+                &format!("RealmNest OS {} started", app.package_info().version),
+            );
+            app.manage(log);
             // no workspace may be (or hold) RealmNest's own data folders (tools/mod.rs)
             let _ = tools::APP_DIRS.set(
                 [data.clone(), app.path().app_data_dir().ok()]
@@ -218,6 +232,9 @@ pub fn run() {
         }
         // no orphans: end every child process when the app quits
         if let tauri::RunEvent::Exit = event {
+            if let Some(log) = handle.try_state::<Arc<applog::AppLog>>() {
+                log.write(applog::now_ms(), "info", "app", "RealmNest OS closed");
+            }
             handle.state::<ProcessHost>().kill_all();
             handle
                 .state::<programs::claude_login::ClaudeLogin>()

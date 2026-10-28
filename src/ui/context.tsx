@@ -20,6 +20,7 @@ import type { Orchestrator } from '../runtime/workflow/orchestrator';
 import type { Scheduler } from '../runtime/workflow/scheduler';
 import type { TelegramBridge } from '../runtime/telegram/bridge';
 import type { DesktopNotifier } from '../runtime/notify/service';
+import type { AppLog } from '../runtime/diagnostics/log';
 import type { SkillService } from '../runtime/skills/service';
 import type { ToolService } from '../runtime/tools/service';
 import { translator } from '../i18n';
@@ -53,6 +54,7 @@ export interface Services {
   scheduler: Scheduler;
   telegram: TelegramBridge;
   notifier: DesktopNotifier;
+  log: AppLog;
 }
 
 const Ctx = createContext<Services | null>(null);

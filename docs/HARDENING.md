@@ -147,7 +147,7 @@ Nothing is silently lost any more at the storage quota (banner, marker, skipped 
 - Claude, ChatGPT and Ollama need their own programs installed; ChatGPT through Codex has no images or streaming.
 - Telegram works only while RealmNest is open; voice messages are not transcribed.
 - Some provider hints and error details from programs are in English.
-- No local log file: problems are shown in the app and its Debug panels only.
+- The log file holds errors and starts only (redacted, about 3 MB at most); see [DIAGNOSTICS.md](DIAGNOSTICS.md).
 
 ## Deferred (P2/P3, not release blockers)
 

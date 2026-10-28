@@ -7,7 +7,7 @@ import { flushAll } from './persistence/coalesced';
 import { shouldCollect, storageHealth } from './persistence/health';
 import { RealmNestRepository } from './persistence/repository';
 import { defaultAdapter, type StorageAdapter } from './persistence/storage';
-import { anthropicTransport, codexModels, fileStore, mcpBridgeTransport, mcpHost, notifyTransport, ollamaTransport, openAiTransport, openRouterTransport, processRunner, secretStore, skillStore, telegramTransport, toolHost, webTransport } from './platform';
+import { anthropicTransport, codexModels, fileStore, logTransport, mcpBridgeTransport, mcpHost, notifyTransport, ollamaTransport, openAiTransport, openRouterTransport, processRunner, secretStore, skillStore, telegramTransport, toolHost, webTransport } from './platform';
 import { TelegramBridge } from './runtime/telegram/bridge';
 import { agentSheet } from './ui/telegram/agentSheet';
 import { lookOf } from './ui/sessionManager';
@@ -24,6 +24,7 @@ import { WebService } from './runtime/web/service';
 import { registerWebTools, WEB_FETCH_ID } from './runtime/web/tool';
 import { syncSearchEngines } from './runtime/web/connectionSearch';
 import { DesktopNotifier } from './runtime/notify/service';
+import { AppLog, wireLog } from './runtime/diagnostics/log';
 import { CrewService } from './runtime/crew/service';
 import { WorkflowLibrary } from './runtime/workflow/library';
 import { Orchestrator, type ToolRunner } from './runtime/workflow/orchestrator';
@@ -71,11 +72,23 @@ import { APP_VERSION } from './version';
 import './styles.css';
 
 // Composition root: wire adapters → store → sessions → UI.
+// RealmNest's log first, so a service that does not start is in it too (docs/DIAGNOSTICS.md)
+const appLog = new AppLog(logTransport());
+wireLog(appLog, bus, window);
 // "Start safely" (the recovery page): this launch skips MCP autostart, Telegram and the scheduler's catch-up
 const safe = takeSafeLaunch();
 storageHealth.setSafeMode(safe);
 // a write that failed in the previous session keeps this session from deleting files (D-4)
 storageHealth.readPreviousSession();
+// a failed save goes to the log too (the banner shows it in the app)
+let loggedWriteError: number | undefined;
+storageHealth.subscribe(() => {
+  const h = storageHealth.getSnapshot();
+  if (h.lastErrorAt && h.lastErrorAt !== loggedWriteError) {
+    loggedWriteError = h.lastErrorAt;
+    appLog.error('storage', `a save failed: ${h.writeFailures.map((f) => f.key).join(', ')}: ${h.lastError ?? ''}`);
+  }
+});
 /** in a safe start, what is not loaded must not be saved over: its writes are dropped */
 const unlessSafe = (a: StorageAdapter): StorageAdapter => (safe ? { kind: a.kind, get: (k) => a.get(k), set: async () => undefined, remove: async () => undefined } : a);
 const store = new AppStore(new RealmNestRepository(defaultAdapter()), bus);
@@ -423,8 +436,8 @@ bus.on('character.deleted', (p) => void memory.onAgentDeleted(p.id));
 if (import.meta.env.DEV) Object.assign(window, { realmnest: { store, sessions, bus, providers, live, chat, connections, capabilities, tools, mcp, skills, files, artifacts, knowledge, embeddings, memory, web, research, crews, workflows, orchestrator, scheduler } });
 
 // a change saved with a delay is written when the window closes (D-8)
-window.addEventListener('pagehide', () => void flushAll());
-window.addEventListener('beforeunload', () => void flushAll());
+window.addEventListener('pagehide', () => (void flushAll(), void appLog.flush()));
+window.addEventListener('beforeunload', () => (void flushAll(), void appLog.flush()));
 
 /** one service's start: a failure marks it as not started (banner) and the app still opens (D-2) */
 const step = (service: string, init: () => unknown) =>
@@ -494,7 +507,7 @@ step('connections', () => connections.init())
     createRoot(rootEl).render(
       <StrictMode>
         <ErrorBoundary fallback={(error) => <RecoveryScreen error={error} lang={lang()} />}>
-          <ServicesProvider value={{ store, bus, sessions, providers, live, chat, connections, capabilities, tools, mcp, skills, files, artifacts, knowledge, embeddings, memory, web, research, usage, crews, workflows, orchestrator, scheduler, telegram, notifier }}>
+          <ServicesProvider value={{ store, bus, sessions, providers, live, chat, connections, capabilities, tools, mcp, skills, files, artifacts, knowledge, embeddings, memory, web, research, usage, crews, workflows, orchestrator, scheduler, telegram, notifier, log: appLog }}>
             <App />
           </ServicesProvider>
         </ErrorBoundary>
