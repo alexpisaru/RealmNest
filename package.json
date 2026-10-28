@@ -3,7 +3,7 @@
   "private": true,
   "license": "AGPL-3.0-or-later",
   "author": "Marius Alexandru Pisaru",
-  "version": "0.12.0-beta",
+  "version": "0.13.0-beta",
   "type": "module",
   "scripts": {
     "dev": "vite",

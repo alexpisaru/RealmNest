@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.13.0 Public Beta (2026-10-29)
+
+Updates, notifications, the web for every provider, and formatted answers. Release notes: [docs/RELEASE_NOTES_0.13.0.md](docs/RELEASE_NOTES_0.13.0.md).
 
 - **RealmNest updates itself.** Shortly after start and every 6 hours it checks the newest GitHub release; when there is a newer version a notice offers **Update now**, **What's new** and **Later**. The update is downloaded, its signature is verified against the key built into RealmNest, and the installer runs in passive mode, keeps your data and starts RealmNest again. Settings › General › About › Updates: automatic check on/off, Check for updates. After an update the installer starts RealmNest directly (no more `RunAsUser`). Copies of 0.12.0 and older need this version installed by hand once. See docs/UPDATES.md.
 - **A log file and a diagnostics report.** RealmNest now writes errors and key moments (start, close, native crashes, page errors, failed tasks, replies, tool calls, MCP servers, connections, saves) to `logsealmnest.log` in its data folder, redacted (no prompts, answers, file contents or keys; API keys, tokens, e-mails and the user name are removed), rotated at 1 MB with two old files. Settings › General › Diagnostics: **Export diagnostics** saves a text report (version, system, connection and server statuses without names, storage health, counts, the log) to attach to a problem; **Open the log folder**. See docs/DIAGNOSTICS.md.

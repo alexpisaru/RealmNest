@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.12.0_Public_Beta-e8a46a" alt="Version 0.12.0 Public Beta">
+  <img src="https://img.shields.io/badge/version-0.13.0_Public_Beta-e8a46a" alt="Version 0.13.0 Public Beta">
   <img src="https://img.shields.io/badge/platform-Windows_10_%7C_11-3b82c4" alt="Windows 10 and 11">
   <img src="https://img.shields.io/badge/license-AGPL--3.0-59c08f" alt="License AGPL-3.0">
   <img src="https://img.shields.io/badge/telemetry-none-555" alt="No telemetry">
@@ -143,17 +143,17 @@ It is a **desktop app that keeps your data on your PC**. You bring your own AI:
 - **Everything stays on this PC:**
   - agents, chats, files, Knowledge, Memory, crews, workflows and settings stay in your Windows user's app folder;
   - API keys and tokens are kept in **Windows Credential Manager**, never in the app's files.
-- **No tracking:** there is no telemetry, analytics, crash reporter or update check.
+- **No tracking:** there is no telemetry, analytics or crash reporter. The update check only downloads the newest release's `latest.json` from GitHub (it can be turned off). Errors go to a log file on your PC, sent nowhere.
 - **What leaves your PC:** only what you send to the AI connections and integrations you set up, such as your prompts to the provider you chose.
 
 The full picture, including how to remove everything, is in [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Install
 
-1. From the [latest release](../../releases/latest), download `RealmNest-OS_0.12.0_x64-setup.exe` and `SHA256SUMS.txt`, then check the installer with `Get-FileHash RealmNest-OS_0.12.0_x64-setup.exe` (SHA-256).
+1. From the [latest release](../../releases/latest), download `RealmNest-OS_0.13.0_x64-setup.exe` and `SHA256SUMS.txt`, then check the installer with `Get-FileHash RealmNest-OS_0.13.0_x64-setup.exe` (SHA-256).
 2. Run it. It installs for your Windows user only, with no administrator rights, and adds RealmNest OS to the Start menu.
    - It is **not code-signed** yet, so Windows SmartScreen may say "Windows protected your PC". Choose *More info › Run anyway* only if the checksum matches.
-   - To upgrade, run the new installer over the old version: your data stays.
+   - From 0.13.0 on RealmNest updates itself: when a new version is out it asks, then downloads, verifies and installs it. From 0.12.0 or older, run the new installer over the old version once: your data stays.
 3. RealmNest needs the Microsoft Edge WebView2 Runtime. Windows 11 and updated Windows 10 already have it, and the installer fetches it if it is missing.
 
 Uninstalling (Settings › Apps) removes the program and keeps your data, unless you tick the box to delete it.
