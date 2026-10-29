@@ -59,9 +59,9 @@ This is a snapshot of where the project stands. Every milestone below was accept
 | check | result |
 | --- | --- |
 | TypeScript (`tsc -b --noEmit`) | clean |
-| Vitest | 836 tests in 47 files, all passing (0.12.0) |
-| Rust | 170 tests passing; `cargo fmt` and `clippy -D warnings` clean |
-| Release | `realmnest-os.exe` 0.12.0 (0.12.0-beta), built 26 October from the release tree, installed and tested |
+| Vitest | 860 tests in 51 files, all passing (0.13.0) |
+| Rust | 177 tests passing; `cargo fmt` and `clippy -D warnings` clean |
+| Release | `realmnest-os.exe` 0.13.0 (0.13.0-beta), built 29 October from the release tree, installed and tested |
 | Lint | the project has no lint script |
 
 ## Milestones done
