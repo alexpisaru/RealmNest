@@ -1,4 +1,16 @@
-# RealmNest OS: status checkpoint (15 October 2026)
+# RealmNest OS: status checkpoint (29 October 2026)
+
+## RealmNest OS 0.13.0 Public Beta — release status
+
+| | |
+| --- | --- |
+| changes | automatic signed updates, Windows notifications, web search for every provider (Claude's own search in turns), Markdown answers, log file and diagnostics ([RELEASE_CANDIDATE_0.13.0.md](RELEASE_CANDIDATE_0.13.0.md)) |
+| source | `release-staging/RealmNest-OS-0.13.0`, build commit `7b97302` |
+| installer | `RealmNest-OS_0.13.0_x64-setup.exe` (NSIS, per-user, 83.1 MiB, SHA-256 `bef4e65f…a7fa`), not code-signed; updater signature and `latest.json` next to it |
+| checks | TypeScript clean; Vitest 860 tests in 51 files; Rust 177 tests, fmt and clippy clean |
+| acceptance | clean install (empty profile, every screen), updater from a signed 0.12.99 test build to the real 0.13.0 installer, manual upgrade 0.12.0 → 0.13.0 on the owner's data (backed up, restored byte for byte, data kept) |
+| verdict | **READY FOR 0.13.0 PUBLIC BETA** |
+| exact next step | the owner pushes `release-staging/RealmNest-OS-0.13.0` and publishes release `v0.13.0` (latest, not pre-release) with the installer, `latest.json`, `SHA256SUMS.txt` and the release notes |
 
 ## RealmNest OS 0.12.0 Public Beta — release status
 
