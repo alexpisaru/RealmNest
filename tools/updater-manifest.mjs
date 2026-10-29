@@ -15,8 +15,14 @@ if (!existsSync(sigFile)) throw new Error(`${basename(sigFile)} is missing: buil
 const name = basename(installer);
 const version = /_(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)_/.exec(name)?.[1];
 if (!version) throw new Error(`no version in ${name} (expected RealmNest-OS_<version>_x64-setup.exe)`);
-// the notes shown in the app: the release notes without their first heading, at most 4,000 characters
-const notes = notesFile && existsSync(notesFile) ? readFileSync(notesFile, 'utf8').replace(/^#[^\n]*\n+/, '').trim().slice(0, 4000) : `RealmNest OS ${version}`;
+// the notes shown in the app ("What's new"): the release notes without their first heading, up to the
+// Install section, at most 4,000 characters cut at a line end
+function appNotes(text) {
+  const body = text.replace(/\r\n/g, '\n').replace(/^#[^\n]*\n+/, '').split(/\n## Install\b/)[0].trim();
+  if (body.length <= 4000) return body;
+  return body.slice(0, body.lastIndexOf('\n', 4000)).trim();
+}
+const notes = notesFile && existsSync(notesFile) ? appNotes(readFileSync(notesFile, 'utf8')) : `RealmNest OS ${version}`;
 const manifest = {
   version,
   notes,
