@@ -176,9 +176,12 @@ export function LiveTaskPanel({ agentId }: { agentId: string }) {
         <div className="live-queue">
           <h5 className="ins-sub">{t('a.live.queued', { n: queue.length })}</h5>
           <ol>
-            {queue.map((q) => (
+            {queue.map((q, i) => (
               <li key={q.id}>
-                <span>{td(q.title)}</span>
+                <span className="q-n">{i + 1}.</span>
+                <span className="q-text" title={td(q.title)}>
+                  {td(q.title)}
+                </span>
                 <button type="button" className="icon-btn" onClick={() => live.removeQueued(q.id)} aria-label={t('a.live.unqueue')} title={t('a.live.unqueue')}>
                   <X size={14} />
                 </button>

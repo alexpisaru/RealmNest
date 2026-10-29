@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Write while the AI answers.** In a chat, a message sent while a reply is being written waits in the conversation's queue (listed above the composer, each with a remove button) and goes by itself after the reply, in order. If the reply is stopped or fails, the queue pauses until **Send now**; a queue left at a restart waits the same way. Files wait by reference; at most 10 messages.
 - **Tasks wait in the agent's queue.** A task given to an agent that is already working is no longer refused: it waits and starts by itself when the agent is done, oldest first. The agent panel keeps the task box (*Add to queue*) and lists the queue with a remove button; Telegram says the task is queued and sends the answer when it has run. Queued tasks survive a restart; files wait by reference; at most 20 per agent. Stopping the current task starts the next one.
 
 ## 0.13.0 Public Beta (2026-10-29)

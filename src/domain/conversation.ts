@@ -85,6 +85,21 @@ export interface Conversation {
   createdAt: number;
   updatedAt: number;
   messages: ChatMessage[];
+  /** messages written while a reply was going, sent in order after it (docs/CHAT.md "Queue") */
+  queued?: QueuedMessage[];
+  /** the queue waits for the user: the last reply was stopped or failed, or RealmNest restarted */
+  queuePaused?: boolean;
+  /** why the first waiting message could not be sent */
+  queueError?: string;
+}
+
+/** a message waiting for its turn; files by reference only (stored, or text) */
+export interface QueuedMessage {
+  id: string;
+  text: string;
+  attachments?: import('./attachment').AttachmentInput[];
+  skillIds?: string[];
+  createdAt: number;
 }
 
 export interface ConversationRun {

@@ -10,7 +10,7 @@
 // and shows its own error. Typing "@" lists the installed Skills: picking one turns it into a chip
 // ([ Workspace Note × ]) that activates it for that message; the text keeps no `@` syntax.
 
-import { ArrowUp, Plus, Sparkles, Square } from 'lucide-react';
+import { ArrowUp, ListPlus, Plus, Sparkles, Square } from 'lucide-react';
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AttachmentSource } from '../../domain/attachment';
 import { matchSkills, mentionAt, mentionedSkills, type SkillCatalogEntry } from '../../runtime/skills/mentions';
@@ -29,6 +29,7 @@ export function ChatComposer({
   onSend,
   onStop,
   busy,
+  queue,
   disabled,
   placeholder,
   leading,
@@ -47,6 +48,8 @@ export function ChatComposer({
   onStop?: () => void;
   /** a reply is being written: the send button becomes Stop */
   busy?: boolean;
+  /** while busy, a message can still be sent: it waits in the conversation's queue */
+  queue?: boolean;
   disabled?: boolean;
   placeholder: string;
   leading?: ReactNode;
@@ -115,7 +118,7 @@ export function ChatComposer({
 
   const loading = attachments.some((a) => a.status === 'loading');
   const sendable = attachments.some((a) => !a.status);
-  const canSend = (!!value.trim() || sendable) && !disabled && !busy && !loading;
+  const canSend = (!!value.trim() || sendable) && !disabled && (!busy || !!queue) && !loading;
   return (
     <form
       className={`composer ${disabled ? 'disabled' : ''} ${dragging ? 'dragging' : ''}`}
@@ -242,6 +245,11 @@ export function ChatComposer({
         {leading}
         <span className="composer-gap" />
         {picker}
+        {busy && queue && canSend && (
+          <button type="submit" className="composer-send" aria-label={t('chat.queue')} title={t('chat.queue')}>
+            <ListPlus size={17} />
+          </button>
+        )}
         {busy && onStop ? (
           <button type="button" className="composer-send stop" onClick={onStop} aria-label={t('chat.stop')} title={t('chat.stop')}>
             <Square size={13} fill="currentColor" />

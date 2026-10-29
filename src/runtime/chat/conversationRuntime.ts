@@ -87,6 +87,9 @@ interface Active {
 export const HISTORY_FILE_BUDGET = 8_000_000;
 
 const LIVE: EmitOptions = { origin: 'live' };
+/** messages that may wait in one conversation's queue */
+export const MAX_QUEUED = 10;
+
 let counter = 0;
 const defaultId = (kind: string) => `${kind}-${Date.now().toString(36)}-${(++counter).toString(36)}`;
 
@@ -122,6 +125,8 @@ export class ConversationRuntime {
   async init() {
     const snap = await this.repo.load(this.now());
     snap.conversations.forEach((c) => this.conversations.set(c.id, this.migrate(c)));
+    // a queue left when RealmNest closed waits for the user (the reply it waited for was interrupted)
+    for (const c of this.conversations.values()) if (c.queued?.length) c.queuePaused = true;
     snap.runs.forEach((r) => this.runs.set(r.id, r));
     // write migrated records back now, not at the next change
     if (snap.conversations.some((c) => !c.connectionId)) await this.repo.flush(this.snapshot);
@@ -766,7 +771,72 @@ export class ConversationRuntime {
     active.conversation.updatedAt = this.now();
     this.setRun(active.run, outcome);
     this.active.delete(active.conversation.id);
+    // the queue: a good reply sends the next message; a stopped or failed one leaves it to the user
+    const c = active.conversation;
+    if (c.queued?.length) {
+      if (outcome === 'completed') queueMicrotask(() => this.sendNextQueued(c.id));
+      else c.queuePaused = true;
+    }
     void this.repo.flush(this.snapshot);
+  }
+
+  // ── queue ────────────────────────────────────────────────
+  /**
+   * Send a message, or queue it while a reply is going: it is sent by itself after that reply
+   * (docs/CHAT.md "Queue"). What can be checked now throws now: something to send, the files kept by
+   * reference, the queue size; the rest when it is sent.
+   */
+  submit(conversationId: string, text: string, attachments: AttachmentInput[] = [], opts: { skillIds?: string[] } = {}): { queued: boolean } {
+    const c = this.require(conversationId);
+    // nothing waits and nothing runs: an ordinary message
+    if (!this.active.has(c.id) && !c.queued?.length) return (this.send(c.id, text, attachments, opts), { queued: false });
+    if (!text.trim() && !attachments.length) throw new ChatError('Write a message first.');
+    if ((c.queued?.length ?? 0) >= MAX_QUEUED) throw new ChatError(`${MAX_QUEUED} messages are already waiting.`);
+    const problem = attachmentProblem(attachments);
+    if (problem) throw new ChatError(problem);
+    const kept = attachments.map(({ data: _data, ...meta }) => meta);
+    const lost = kept.find((a) => !a.storageRef && !(a.kind === 'text' && a.text !== undefined));
+    if (lost) throw new ChatError(`${lost.name} could not be kept for later: send it after the reply.`);
+    c.queued = [...(c.queued ?? []), { id: this.newId('msg'), text, createdAt: this.now(), ...(kept.length && { attachments: kept }), ...(opts.skillIds?.length && { skillIds: opts.skillIds }) }];
+    this.updated(c, ['queued']);
+    // nothing runs (a paused queue): this one waits behind the others until the user sends them
+    return { queued: true };
+  }
+
+  /** take a waiting message out of the queue */
+  removeQueued(conversationId: string, queuedId: string) {
+    const c = this.require(conversationId);
+    if (!c.queued?.some((q) => q.id === queuedId)) return;
+    c.queued = c.queued.filter((q) => q.id !== queuedId);
+    if (!c.queued.length) (delete c.queued, delete c.queuePaused, delete c.queueError);
+    this.updated(c, ['queued']);
+  }
+
+  /** a paused queue goes on: its first message is sent now (when no reply is going) */
+  resumeQueue(conversationId: string) {
+    const c = this.require(conversationId);
+    delete c.queuePaused;
+    delete c.queueError;
+    if (!this.active.has(c.id)) this.sendNextQueued(c.id);
+    else this.updated(c, ['queued']);
+  }
+
+  /** the first waiting message goes out; one that cannot be sent goes back first and pauses the queue */
+  private sendNextQueued(conversationId: string) {
+    const c = this.conversations.get(conversationId);
+    if (!c || this.active.has(c.id) || c.queuePaused || !c.queued?.length) return;
+    const [next, ...rest] = c.queued;
+    if (rest.length) c.queued = rest;
+    else delete c.queued;
+    delete c.queueError;
+    try {
+      this.send(c.id, next.text, next.attachments ?? [], { ...(next.skillIds && { skillIds: next.skillIds }) });
+    } catch (e) {
+      c.queued = [next, ...rest];
+      c.queuePaused = true;
+      c.queueError = e instanceof Error ? e.message : String(e);
+      this.updated(c, ['queued']);
+    }
   }
 
   /** after an agent chat turn: maybe propose memories (never blocks, never saves on its own) */

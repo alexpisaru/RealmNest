@@ -332,3 +332,58 @@ describe('chat: hardening (docs/HARDENING.md R-11)', () => {
     expect((await turn(chat, c.id, 'Again')).status).toBe('completed');
   });
 });
+
+describe('the message queue', () => {
+  it('messages written while a reply goes wait, then go in order by themselves', async () => {
+    const { chat, claude } = setup();
+    const c = chat.create({ connectionId: 'claude-code' });
+    expect(chat.submit(c.id, 'first')).toEqual({ queued: false });
+    expect(chat.submit(c.id, 'second')).toEqual({ queued: true });
+    expect(chat.submit(c.id, 'third')).toEqual({ queued: true });
+    expect(chat.get(c.id)!.queued!.map((q) => q.text)).toEqual(['second', 'third']);
+    await until(() => !chat.isBusy(c.id) && !chat.get(c.id)!.queued);
+    expect(claude.requests.map((r) => r.messages.at(-1)!.content)).toEqual(['first', 'second', 'third']);
+    // the session went on: each reply remembers the earlier messages
+    expect(chat.get(c.id)!.messages.at(-1)!.content).toBe('I remember: first | second | third');
+  });
+
+  it('a stopped reply pauses the queue; Send now goes on; a message can be taken out', async () => {
+    const { chat, claude } = setup();
+    claude.mode = 'hang';
+    const c = chat.create({ connectionId: 'claude-code' });
+    chat.submit(c.id, 'first');
+    chat.submit(c.id, 'second');
+    chat.submit(c.id, 'third');
+    await until(() => claude.requests.length === 1);
+    await chat.stop(c.id);
+    await until(() => !chat.isBusy(c.id));
+    expect(chat.get(c.id)).toMatchObject({ queuePaused: true });
+    expect(claude.requests).toHaveLength(1);
+    // while paused a new message waits behind the others
+    expect(chat.submit(c.id, 'fourth')).toEqual({ queued: true });
+    chat.removeQueued(c.id, chat.get(c.id)!.queued![1].id);
+    claude.mode = 'answer';
+    chat.resumeQueue(c.id);
+    await until(() => !chat.get(c.id)!.queued && !chat.isBusy(c.id));
+    expect(claude.requests.map((r) => r.messages.at(-1)!.content)).toEqual(['first', 'second', 'fourth']);
+  });
+
+  it('a failed reply pauses too; a queue left at a restart waits for the user; files wait by reference', async () => {
+    const storage = new MemoryAdapter();
+    const a = setup(storage);
+    a.claude.mode = 'fail';
+    const c = a.chat.create({ connectionId: 'claude-code' });
+    a.chat.submit(c.id, 'first');
+    a.chat.submit(c.id, 'second');
+    await until(() => !a.chat.isBusy(c.id));
+    expect(a.chat.get(c.id)).toMatchObject({ queuePaused: true, queued: [{ text: 'second' }] });
+    expect(() => a.chat.submit(c.id, 'x', [{ name: 'a.png', kind: 'image', mime: 'image/png', size: 4, data: 'AAAA', createdAt: 0 }])).toThrow(/could not be kept/);
+    a.chat.submit(c.id, 'with a file', [{ name: 'a.png', kind: 'image', mime: 'image/png', size: 4, data: 'AAAA', storageRef: 'sha256:abc', createdAt: 0 }]);
+    expect(a.chat.get(c.id)!.queued![1].attachments![0]).not.toHaveProperty('data');
+    await new Promise((r) => setTimeout(r, 30));
+    const b = setup(storage);
+    await b.chat.init();
+    expect(b.chat.get(c.id)).toMatchObject({ queuePaused: true });
+    expect(b.chat.get(c.id)!.queued!.map((q) => q.text)).toEqual(['second', 'with a file']);
+  });
+});

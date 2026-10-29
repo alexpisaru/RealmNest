@@ -151,7 +151,8 @@ export function ChatScreen() {
         if (draftWeb !== undefined) chat.setWeb(c.id, draftWeb);
         setSelectedId(c.id);
       }
-      chat.send(c.id, content, outgoing, { skillIds: again ? (again.skillIds ?? []) : skillIds });
+      // while a reply is going it waits in the conversation's queue, then goes by itself
+      chat.submit(c.id, content, outgoing, { skillIds: again ? (again.skillIds ?? []) : skillIds });
       if (!again) {
         setText('');
         setSkillIds([]);
@@ -335,12 +336,14 @@ export function ChatScreen() {
         )}
         {gone && <div className="chat-banner">{t('a.chat.gone')}</div>}
         {error && <p className="chat-error">{error}</p>}
+        {conv && <ChatQueue conv={conv} busy={busy} onError={setError} />}
         <ChatComposer
           value={text}
           onChange={setText}
           onSend={() => send()}
           onStop={conv ? () => void chat.stop(conv.id) : undefined}
           busy={busy}
+          queue={!!conv}
           disabled={lost || gone}
           autoFocus
           placeholder={gone ? t('a.chat.goneShort') : lost ? t('a.chat.lostShort') : `${agentName ? t('chat.placeholderAgent', { name: agentName }) : t('chat.placeholder')}${skillCatalog.length ? `  ·  ${t('skills.mentionHint')}` : ''}`}
@@ -514,6 +517,48 @@ function Message({
 }
 
 /** **bold** and `code`, as React elements (never HTML); everything else stays plain text */
+/** the messages waiting for their turn (written while a reply was going); a paused queue waits for Send now */
+function ChatQueue({ conv, busy, onError }: { conv: Conversation; busy: boolean; onError: (e: string) => void }) {
+  const t = useT();
+  const chat = useChat();
+  const queued = conv.queued ?? [];
+  if (!queued.length) return null;
+  const act = (f: () => void) => {
+    try {
+      f();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  return (
+    <div className="chat-queue">
+      <div className="chat-queue-head">
+        <b>{t('chat.queued', { n: queued.length })}</b>
+        {conv.queuePaused && !busy && (
+          <Button size="sm" tone="primary" onClick={() => act(() => chat.resumeQueue(conv.id))}>
+            {t('chat.queueSend')}
+          </Button>
+        )}
+      </div>
+      {conv.queuePaused && <p className="muted small">{conv.queueError ?? t('chat.queuePaused')}</p>}
+      <ol>
+        {queued.map((q, i) => (
+          <li key={q.id}>
+            <span className="q-n">{i + 1}.</span>
+            <span className="q-text" title={q.text}>
+              {q.text.trim() || q.attachments?.[0]?.name}
+              {q.attachments?.length ? <small className="muted"> · {t('chat.queueFiles', { n: q.attachments.length })}</small> : null}
+            </span>
+            <button type="button" className="icon-btn" onClick={() => act(() => chat.removeQueued(conv.id, q.id))} aria-label={t('chat.queueRemove')} title={t('chat.queueRemove')}>
+              <X size={14} />
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function Inline({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*\n]+\*\*|`[^`\n]+`)/g);
   return (
