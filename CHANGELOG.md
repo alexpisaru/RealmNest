@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Prices in the model menus, ChatGPT and Claude too.** Next to the context each model shows its price as *in $x · out $y /1M*. Models sold by subscription (ChatGPT, Claude by account), which have no price of their own, show the API price of the same model (*API in … · out … /1M*) from OpenRouter's public model list, read at most once a day when a model menu opens (no key, nothing about you).
 - **Write while the AI answers.** In a chat, a message sent while a reply is being written waits in the conversation's queue (listed above the composer, each with a remove button) and goes by itself after the reply, in order. If the reply is stopped or fails, the queue pauses until **Send now**; a queue left at a restart waits the same way. Files wait by reference; at most 10 messages.
 - **Tasks wait in the agent's queue.** A task given to an agent that is already working is no longer refused: it waits and starts by itself when the agent is done, oldest first. The agent panel keeps the task box (*Add to queue*) and lists the queue with a remove button; Telegram says the task is queued and sends the answer when it has run. Queued tasks survive a restart; files wait by reference; at most 20 per agent. Stopping the current task starts the next one.
 

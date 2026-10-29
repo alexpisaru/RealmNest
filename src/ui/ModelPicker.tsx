@@ -11,7 +11,7 @@ import { createPortal } from 'react-dom';
 import type { CapabilityId } from '../domain/capability';
 import type { ModelInfo } from '../runtime/providers/types';
 import { translator, type TKey } from '../i18n';
-import { useCapabilities, useConnections, useT } from './context';
+import { useCapabilities, useConnections, usePriceList, useT } from './context';
 
 /** the UI translator; plain helpers default to English when none is passed */
 type Tr = ReturnType<typeof translator>;
@@ -73,6 +73,26 @@ export function priceSummary(m: ModelInfo, t: Tr = EN): string | undefined {
   return t('a.price.per', { a, b });
 }
 
+/**
+ * What a model costs next to its context: its own price per 1M tokens, or, for a model sold by
+ * subscription (ChatGPT, Claude by account), the API price of the same model ("API: …").
+ * `open`: a model menu is open, so the reference prices are read if the copy is old.
+ */
+export function usePriceText(open: boolean) {
+  const t = useT();
+  const prices = usePriceList();
+  useEffect(() => {
+    if (open) void prices.ensure();
+  }, [open, prices]);
+  return (m: ModelInfo, providerId?: string) => {
+    const own = priceSummary(m, t);
+    if (own) return own;
+    const ref = prices.reference(providerId, m.id);
+    const text = ref && priceSummary({ ...m, pricing: ref }, t);
+    return text ? t('a.price.ref', { price: text }) : undefined;
+  };
+}
+
 export function contextSummary(n?: number) {
   if (!n) return undefined;
   return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n % 1_000_000 ? 1 : 0)}M ctx` : `${Math.round(n / 1000)}k ctx`;
@@ -121,6 +141,8 @@ export function ModelPicker({
   const models = useMemo(() => [...split.supported, ...split.unknown], [split]);
   const unknownIds = useMemo(() => new Set(split.unknown.map((m) => m.id)), [split]);
   const [open, setOpen] = useState(false);
+  const priceText = usePriceText(open);
+  const providerId = connectionId ? connections.get(connectionId)?.providerId : undefined;
   const [all, setAll] = useState(false);
   const [place, setPlace] = useState<{ left: number; top?: number; bottom?: number; maxHeight: number }>({ left: 0, maxHeight: 420 });
   const [query, setQuery] = useState('');
@@ -231,7 +253,7 @@ export function ModelPicker({
                   <small>
                     <code>{m.id}</code>
                     {contextSummary(m.contextLength) && <span>{contextSummary(m.contextLength)}</span>}
-                    {priceSummary(m, t) && <span>{priceSummary(m, t)}</span>}
+                    {priceText(m, providerId) && <span>{priceText(m, providerId)}</span>}
                     {m.inputModalities?.filter((x) => x !== 'text').map((x) => (
                       <span key={x} className="badge">
                         {t('a.model.input', { kind: MODALITIES.has(x) ? t(`a.mod.${x}` as TKey) : x })}

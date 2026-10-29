@@ -26,6 +26,7 @@ import { syncSearchEngines } from './runtime/web/connectionSearch';
 import { DesktopNotifier } from './runtime/notify/service';
 import { AppLog, wireLog } from './runtime/diagnostics/log';
 import { UpdateService } from './runtime/update/service';
+import { PriceList } from './runtime/providers/priceList';
 import { CrewService } from './runtime/crew/service';
 import { WorkflowLibrary } from './runtime/workflow/library';
 import { Orchestrator, type ToolRunner } from './runtime/workflow/orchestrator';
@@ -101,6 +102,8 @@ COMING_SOON.filter((d) => !catalog.get(d.id)).forEach((d) => catalog.register(d)
 const secrets = secretStore();
 const connections = new ConnectionManager(bus, catalog, defaultAdapter(), { runner: processRunner(), secrets }, { seedProviderId: claudeCodeDefinition.id, legacyProfile: async () => (await defaultAdapter().get('save')) !== undefined });
 // every turn runs on a connection's adapter
+// reference prices for models sold by subscription, from OpenRouter's public catalogue (docs/PROVIDERS.md)
+const prices = new PriceList(openRouterTransport(), defaultAdapter());
 const providers = new ProviderService(new ProviderRegistry(), bus, (id) => connections.provider(id));
 // what each connection/model can do, and the user's routing policy (docs/CAPABILITIES.md)
 const capabilities = new CapabilityService(connections, bus, defaultAdapter());
@@ -491,7 +494,7 @@ step('connections', () => connections.init())
     ]),
   )
   // Knowledge after artifacts: its stale check reads them
-  .then(() => Promise.all([step('knowledge', () => knowledge.init()), step('memory', () => memory.init()), step('web', () => web.init()), step('research', () => research.init()), step('usage', () => usage.init()), step('crews', () => crews.init()), step('workflows', () => workflows.init()), step('notifications', () => notifier.init())]))
+  .then(() => Promise.all([step('knowledge', () => knowledge.init()), step('memory', () => memory.init()), step('web', () => web.init()), step('research', () => research.init()), step('usage', () => usage.init()), step('crews', () => crews.init()), step('workflows', () => workflows.init()), step('notifications', () => notifier.init()), step('prices', () => prices.init())]))
   // the orchestrator after crews (crew nodes follow their runs); the scheduler after it (a catch-up creates runs)
   .then(() => step('orchestrator', () => orchestrator.init()))
   .then(() => (safe ? undefined : step('scheduler', () => scheduler.init())))
@@ -522,7 +525,7 @@ step('connections', () => connections.init())
     createRoot(rootEl).render(
       <StrictMode>
         <ErrorBoundary fallback={(error) => <RecoveryScreen error={error} lang={lang()} />}>
-          <ServicesProvider value={{ store, bus, sessions, providers, live, chat, connections, capabilities, tools, mcp, skills, files, artifacts, knowledge, embeddings, memory, web, research, usage, crews, workflows, orchestrator, scheduler, telegram, notifier, log: appLog, updates }}>
+          <ServicesProvider value={{ store, bus, sessions, providers, live, chat, connections, capabilities, tools, mcp, skills, files, artifacts, knowledge, embeddings, memory, web, research, usage, crews, workflows, orchestrator, scheduler, telegram, notifier, log: appLog, updates, prices }}>
             <App />
           </ServicesProvider>
         </ErrorBoundary>

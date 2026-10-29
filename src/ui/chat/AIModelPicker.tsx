@@ -18,7 +18,7 @@ import type { AIConnection } from '../../domain/connection';
 import type { ModelInfo } from '../../runtime/providers/types';
 import { statusLabel, useConnectionLabel } from '../connections';
 import { useCapabilities, useChat, useConnections, useServices, useT } from '../context';
-import { contextSummary, priceSummary, searchModels } from '../ModelPicker';
+import { contextSummary, searchModels, usePriceText } from '../ModelPicker';
 
 /** what the chat will use: the routing policy, or a connection (and maybe a model) */
 export type AITarget = { auto: true } | { auto?: false; connectionId: string; model?: string };
@@ -208,6 +208,8 @@ function ModelsPanel({ c, value, onPick }: { c: AIConnection; value: AITarget; o
   const chat = useChat();
   const [query, setQuery] = useState('');
   const [custom, setCustom] = useState('');
+  // the panel is shown: reference prices are read if the copy is old
+  const priceText = usePriceText(true);
   const broken = BROKEN.has(c.status);
   const selected = !value.auto && value.connectionId === c.id;
   const catalog = connections.models(c.id);
@@ -237,7 +239,7 @@ function ModelsPanel({ c, value, onPick }: { c: AIConnection; value: AITarget; o
       <span className="ai-row-text">
         <b>{shortModelName(m)}</b>
         <small>
-          {[m.providerLabel, contextSummary(m.contextLength), priceSummary(m, t)].filter(Boolean).join(' · ')}
+          {[m.providerLabel, contextSummary(m.contextLength), priceText(m, c.providerId)].filter(Boolean).join(' · ')}
           {unknown.has(m.id) && <span className="badge">{t('a.picker.chatUnstated')}</span>}
         </small>
       </span>

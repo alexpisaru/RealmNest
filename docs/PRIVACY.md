@@ -8,6 +8,7 @@ RealmNest OS has **no telemetry, no analytics, no crash reporter and no update c
 | --- | --- | --- |
 | Anthropic (`api.anthropic.com`) | an Anthropic API-key connection is used | your prompts, attachments, tool results, the system prompt; the key from Credential Manager |
 | OpenRouter (`openrouter.ai`) | an OpenRouter connection is used (chat, models, embeddings, credits) | the same, plus the header `X-Title: RealmNest OS` |
+| OpenRouter (`openrouter.ai/api/v1/models`) | at most once a day, when a model menu opens, to show reference prices for ChatGPT and Claude models | a download of the public model list, no key and nothing about you ([PROVIDERS.md](PROVIDERS.md#prices-in-the-model-menus)) |
 | OpenAI (`api.openai.com`) | an OpenAI API-key connection is used | prompts, files, embeddings |
 | Ollama (`127.0.0.1:11434`) | an Ollama connection is used | stays on this PC |
 | Claude Code / Codex CLIs | a Claude or ChatGPT account connection is used | prompts go to the CLI on this PC, which talks to Anthropic or OpenAI with your account; the CLIs' own data practices apply. Signing in opens the provider's page in your browser |

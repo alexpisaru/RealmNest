@@ -307,6 +307,16 @@ Limits: OpenAI's `/models` says nothing per model, so the connection's claims (t
 - **Account:** the default Codex folder (`~/.codex`, the account already signed in) or another folder (`CODEX_HOME`) = another account. Sign in / out from the connection (`codex login` opens the browser; no code to paste). Only `CODEX_HOME` may be set; API-key variables are dropped, so a turn always uses the ChatGPT sign-in.
 - **Not in v1:** images and PDFs, streaming (Codex sends whole messages), structured output. Sessions appear in the user's own Codex history.
 
+## Prices in the model menus
+
+Each model row shows, next to its context, its price per 1M tokens as **in $x · out $y /1M** (`priceSummary`), when the catalogue has one: OpenRouter, the OpenAI API, the Anthropic API.
+
+**Reference prices** (`src/runtime/providers/priceList.ts`). Models sold by subscription (ChatGPT through Codex, Claude by account) have no price in their catalogues, so their rows show **API in $x · out $y /1M**: the API price of the same model from OpenRouter's public catalogue.
+- It is read through the native `openrouter_models` (no key, nothing about the user) at most once a day, and only when a model menu opens. Offline, it tries again after an hour.
+- Only the `openai/…` and `anthropic/…` entries are kept (under `price-list`), without variants (`:free`…).
+- A model matches when the ids agree without the maker and with dots as dashes (`anthropic/claude-opus-5.5` = `claude-opus-5-5`). No match: no price.
+- It is not what the subscription costs: it shows how heavy each model is next to the others.
+
 ## Effort
 
 The reasoning effort ("Impegno") says how much a model reasons before it answers. `ModelInfo.reasoning.efforts` lists the levels a model takes (lowest first) and is what the UI offers; `reasoning.default` is the level the backend uses when none is asked for, when the provider states it. `ProviderTurnRequest.effort` asks for one level; every adapter sends it only when the turn's model lists it (`acceptedEffort` in `effort.ts`) and otherwise sends nothing, so the backend's own default applies. Without a model id only the levels every listed model takes count.

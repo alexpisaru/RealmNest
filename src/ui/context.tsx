@@ -22,6 +22,7 @@ import type { TelegramBridge } from '../runtime/telegram/bridge';
 import type { DesktopNotifier } from '../runtime/notify/service';
 import type { AppLog } from '../runtime/diagnostics/log';
 import type { UpdateService } from '../runtime/update/service';
+import type { PriceList } from '../runtime/providers/priceList';
 import type { SkillService } from '../runtime/skills/service';
 import type { ToolService } from '../runtime/tools/service';
 import { translator } from '../i18n';
@@ -57,6 +58,7 @@ export interface Services {
   notifier: DesktopNotifier;
   log: AppLog;
   updates: UpdateService;
+  prices: PriceList;
 }
 
 const Ctx = createContext<Services | null>(null);
@@ -154,6 +156,12 @@ export function useTelegram() {
   const { telegram } = useServices();
   useSyncExternalStore(telegram.subscribe, telegram.getVersion);
   return telegram;
+}
+
+export function usePriceList() {
+  const { prices } = useServices();
+  useSyncExternalStore(prices.subscribe, prices.getVersion);
+  return prices;
 }
 
 export function useUpdates() {

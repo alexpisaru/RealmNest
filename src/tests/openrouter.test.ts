@@ -197,7 +197,7 @@ describe('models', () => {
   it('summarizes prices from the catalogue only', () => {
     expect(priceSummary({ id: 'a', pricing: { prompt: '0', completion: '0' } })).toBe('free');
     expect(priceSummary({ id: 'a', pricing: { prompt: '-1', completion: '-1' } })).toBe('variable price');
-    expect(priceSummary({ id: 'a', pricing: { prompt: '0.000001', completion: '0.0000027' } })).toBe('$1.00 / $2.70 per 1M tokens');
+    expect(priceSummary({ id: 'a', pricing: { prompt: '0.000001', completion: '0.0000027' } })).toBe('in $1.00 · out $2.70 /1M');
     expect(priceSummary({ id: 'a' })).toBeUndefined();
   });
 });
