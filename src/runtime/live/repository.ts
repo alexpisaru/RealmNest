@@ -49,7 +49,8 @@ export class RuntimeRepository {
     const tasks = (Array.isArray(raw?.tasks) ? raw.tasks : [])
       .filter(isRecord)
       .map((t) => (Array.isArray(t.runIds) ? t : { ...t, runIds: [] }))
-      .map((t) => (!isFinished(t.status) && (interrupted.has(t.id) || t.status === 'queued') ? { ...t, status: 'failed' as const, updatedAt: now } : t));
+      // a task waiting in the agent's queue (it has its input) keeps waiting; any other unfinished one failed
+      .map((t) => (!isFinished(t.status) && (interrupted.has(t.id) || (t.status === 'queued' && !t.pending)) ? { ...t, status: 'failed' as const, updatedAt: now } : t));
     return { version: RUNTIME_SCHEMA, agents: (Array.isArray(raw?.agents) ? raw.agents : []).filter(isRecord), tasks, runs };
   }
 

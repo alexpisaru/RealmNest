@@ -14,7 +14,7 @@
 // Still types only: tools, permissions, workflows, schedules.
 // ─────────────────────────────────────────────────────────────
 
-import type { Attachment } from './attachment';
+import type { Attachment, AttachmentInput } from './attachment';
 import type { KnowledgeMode, KnowledgeRunRecord } from './knowledge';
 import type { AgentMemorySettings, MemoryRunRecord } from './memory';
 import type { WebRunRecord } from './web';
@@ -101,6 +101,19 @@ export interface AgentTask {
   crew?: { crewId: string; runId: string; taskId?: string; kind: 'plan' | 'work' | 'review' | 'assemble' };
   /** a workflow run's node (docs/WORKFLOWS.md) */
   workflow?: { workflowId: string; runId: string; nodeId: string };
+  /** waiting in the agent's queue (status queued): what starts it once the agent is free (docs/RUNTIME.md "Queue") */
+  pending?: QueuedTaskInput;
+  /** why it never started (a queued task that could not start, or was removed) */
+  error?: { code: string; message: string };
+}
+
+/** a queued task's input; files by reference only (stored, or text), so it survives a restart */
+export interface QueuedTaskInput {
+  prompt: string;
+  attachments?: AttachmentInput[];
+  skillIds?: string[];
+  /** a model wrote the prompt (Telegram's concierge) */
+  modelWritten?: boolean;
 }
 
 /** who handed a task over: an agent's run (agentId, taskId) or a chat (conversationId) */

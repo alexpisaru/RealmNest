@@ -82,9 +82,21 @@ The two never mix: a session has exactly one runtime, and runs exist only in the
 
 ## Concurrency
 
-- **Per agent.** There is no global "current run". `LiveRuntime` keeps a map from agent to active run: at most one per agent, refused with a clear error if busy.
+- **Per agent.** There is no global "current run". `LiveRuntime` keeps a map from agent to active run: at most one per agent. `startTask` refuses a busy agent; `giveTask` queues the task instead (see Queue).
 - **Many agents at once.** Each run has its own id in the provider layer and in the native process host. A test covers two agents running at once with isolated outputs.
-- **Orchestration** (queues, delegation, scheduling) is not implemented.
+- **Orchestration.** Delegation, crews and workflows each wait for a busy agent in their own way (DELEGATION.md, CREW.md, WORKFLOWS.md).
+
+## Queue
+
+A task given to a busy agent (`LiveRuntime.giveTask`: the agent panel, Telegram) waits in the agent's queue and starts by itself when the agent is done.
+
+- **A queued task** is an `AgentTask` with status `queued`, no runs, and `pending`: the prompt, the Skills named and the files **by reference** (stored files, or text). A file that exists only in memory cannot wait (`INVALID_FILE`, "give the task when the agent is free"). At most `MAX_QUEUE` (20) per agent (`QUEUE_FULL`).
+- **Checked at once:** something to do, a real agent, the files, the queue size. **Checked when it starts** (the normal `startTask` checks): the connection, the files for that model, the Skills. A queued task that cannot start fails with its reason in `task.error`, and the next one tries.
+- **Order:** oldest first. When the agent goes idle, the next task starts in a microtask, after the listeners of the run's end: a crew or workflow step they start goes first, and the queue waits for it.
+- **Stop** ends the current task only: the next queued one then starts. **Remove** (`removeQueued`) takes one out; it stays in the history as cancelled. A deleted agent loses its queue.
+- **Restart:** queued tasks are saved with the rest and start again 3 s after start (`resumeQueueMs`). Only a `queued` task without `pending` (one that was about to start when RealmNest closed) is marked failed, as before.
+- **UI:** while the agent works, its panel keeps the task box; the button reads *Add to queue*, and the queue is listed under the current task with a remove button per task.
+
 
 ## Cancellation
 
@@ -148,7 +160,7 @@ An agent's **Web access** (inspector › Web, `AgentDefinition.webAccess`, off b
 
 ## Known limitations
 
-- **One run per agent**, no queue: a new task is refused while the agent is busy.
+- **One run per agent.** Further tasks wait in its queue (see Queue); they do not run in parallel.
 - **Single-turn tasks.** The run uses no session, so a new task does not see earlier ones (Chat is the next milestone).
 - **Tools.** An agent can use RealmNest tools, native and MCP (the Tools section of its inspector, grouped by source). There are two paths:
   - OpenRouter models with tool calling run through the ToolLoop;

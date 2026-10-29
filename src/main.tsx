@@ -343,7 +343,18 @@ const telegram = new TelegramBridge({
   t: () => translator(lang()),
   agents: () => store.getState().characters.map((c) => ({ id: c.id, name: c.name, role: dataText(lang(), c.role), worldId: c.worldId })),
   worldName: (id) => dataText(lang(), WORLD_BY_ID[id]?.name ?? id),
-  live: { startTask: (a, i) => live.startTask(a, i), activeRun: (a) => live.activeRun(a), cancel: (a) => live.cancel(a), taskTitle: (id) => live.getTask(id)?.title },
+  live: {
+    startTask: (a, i) => live.startTask(a, i),
+    activeRun: (a) => live.activeRun(a),
+    cancel: (a) => live.cancel(a),
+    taskTitle: (id) => live.getTask(id)?.title,
+    giveTask: (a, i) => live.giveTask(a, i),
+    queueLength: (a) => live.queued(a).length,
+    queuedEnd: (id) => {
+      const task = live.getTask(id);
+      return task && { started: task.runIds.length > 0, ...(task.error && { error: task.error.message }) };
+    },
+  },
   crews,
   workflows,
   orchestrator,

@@ -66,6 +66,12 @@ export interface TelegramDeps {
     activeRun(agentId: string): { id: string; taskId?: string } | undefined;
     cancel(agentId: string): Promise<unknown> | unknown;
     taskTitle?(taskId: string): string | undefined;
+    /** a task for a busy agent waits in its queue (docs/RUNTIME.md "Queue"); without it, a busy agent says so */
+    giveTask?(agentId: string, input: { prompt: string; title?: string; attachments?: AttachmentInput[]; modelWritten?: boolean }): { task: { id: string }; run?: { id: string }; queued: boolean };
+    /** how many tasks wait for this agent */
+    queueLength?(agentId: string): number;
+    /** why a queued task ended without running (removed, or it could not start) */
+    queuedEnd?(taskId: string): { started: boolean; error?: string } | undefined;
   };
   crews: {
     list(): { id: string; name: string; worldId: string; members: { agentId: string }[]; coordinatorId: string }[];
@@ -124,6 +130,8 @@ export class TelegramBridge {
   private buttons = new Map<string, { at: number; run: Action; approval?: boolean }>();
   /** agent runs started from Telegram → the chat that waits for the answer */
   private runs = new Map<string, number>();
+  /** tasks queued from Telegram (their run starts later) → the chat that waits for the answer */
+  private queuedTasks = new Map<string, number>();
   /** crew and workflow runs started from Telegram → their chat */
   private started = new Map<string, number>();
   /** the last status seen per crew / workflow run (to notice transitions) */
@@ -404,10 +412,21 @@ export class TelegramBridge {
   async askAgent(chatId: number, agentId: string, text: string, byModel = false) {
     const a = this.deps.agents().find((x) => x.id === agentId);
     if (!a) return this.say(chatId, this.t('tg.noAgent', { name: agentId }));
-    if (this.deps.live.activeRun(agentId)) return this.say(chatId, this.t('tg.busy', { name: a.name }));
+    const live = this.deps.live;
+    if (live.activeRun(agentId) && !live.giveTask) return this.say(chatId, this.t('tg.busy', { name: a.name }));
     const c = this.chat(chatId);
     const attachments = c.pending.splice(0);
-    const { run } = this.deps.live.startTask(agentId, { prompt: text, title: text.slice(0, 80), ...(attachments.length && { attachments }), ...(byModel && { modelWritten: true }) });
+    const input = { prompt: text, title: text.slice(0, 80), ...(attachments.length && { attachments }), ...(byModel && { modelWritten: true }) };
+    let run: { id: string };
+    if (live.giveTask) {
+      const given = live.giveTask(agentId, input);
+      if (given.queued || !given.run) {
+        // a busy agent: the task waits its turn, and the answer comes here when it is done
+        this.queuedTasks.set(given.task.id, chatId);
+        return this.say(chatId, this.t('tg.queued', { name: a.name, n: live.queueLength?.(agentId) ?? 1 }));
+      }
+      run = given.run;
+    } else run = live.startTask(agentId, input).run;
     this.runs.set(run.id, chatId);
     c.last = { kind: 'agent', id: run.id, agentId };
     await this.deps.transport.typing(chatId).catch(() => undefined);
@@ -682,9 +701,11 @@ export class TelegramBridge {
     const bus = this.deps.bus;
     // the runtime frees the agent right after emitting: handle the end in a microtask
     this.offs.push(
-      bus.on('agent.run.completed', (p) => queueMicrotask(() => void this.runEnded(p.runId, p.agentId, p.result))),
-      bus.on('agent.run.failed', (p) => queueMicrotask(() => void this.runEnded(p.runId, p.agentId, undefined, p.error.message))),
-      bus.on('agent.run.cancelled', (p) => queueMicrotask(() => void this.runEnded(p.runId, p.agentId, undefined, this.t('tg.stopped')))),
+      bus.on('agent.run.completed', (p) => queueMicrotask(() => void this.runEnded(p.runId, p.agentId, p.result, undefined, p.taskId))),
+      bus.on('agent.run.failed', (p) => queueMicrotask(() => void this.runEnded(p.runId, p.agentId, undefined, p.error.message, p.taskId))),
+      bus.on('agent.run.cancelled', (p) => queueMicrotask(() => void this.runEnded(p.runId, p.agentId, undefined, this.t('tg.stopped'), p.taskId))),
+      // a queued task that ended without running (taken out of the queue, or it could not start)
+      bus.on('task.status.changed', (p) => (p.to === 'cancelled' || p.to === 'failed') && this.queuedTasks.has(p.taskId) && queueMicrotask(() => void this.queuedEnded(p.taskId, p.agentId))),
       bus.on('tool.awaiting_approval', (p) => void this.toolWaits(p.toolCallId)),
       bus.on('tool.approved', (p) => void this.closeApproval(`tool:${p.toolCallId}`, 'yes')),
       bus.on('tool.denied', (p) => void this.closeApproval(`tool:${p.toolCallId}`, 'no')),
@@ -696,10 +717,21 @@ export class TelegramBridge {
     );
   }
 
-  private async runEnded(runId: string, agentId: string, result?: string, error?: string) {
-    const chatId = this.runs.get(runId);
+  private async queuedEnded(taskId: string, agentId: string) {
+    const end = this.deps.live.queuedEnd?.(taskId);
+    const chatId = this.queuedTasks.get(taskId);
+    // it ran: its run's end answers (runEnded)
+    if (chatId === undefined || !end || end.started) return;
+    this.queuedTasks.delete(taskId);
+    const name = this.deps.agents().find((x) => x.id === agentId)?.name ?? agentId;
+    return this.say(chatId, end.error ? this.t('tg.agentFailed', { name, msg: end.error }) : this.t('tg.unqueued', { name }));
+  }
+
+  private async runEnded(runId: string, agentId: string, result?: string, error?: string, taskId?: string) {
+    const chatId = this.runs.get(runId) ?? (taskId !== undefined ? this.queuedTasks.get(taskId) : undefined);
     if (chatId === undefined) return;
     this.runs.delete(runId);
+    if (taskId !== undefined) this.queuedTasks.delete(taskId);
     const a = this.deps.agents().find((x) => x.id === agentId);
     const name = a?.name ?? agentId;
     if (error) return this.say(chatId, this.t('tg.agentFailed', { name, msg: error }));

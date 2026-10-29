@@ -32,6 +32,7 @@ import {
   type AgentTask,
   type Delegator,
   type LiveAgentStatus,
+  type QueuedTaskInput,
   type RunStatus,
   type TaskStatus,
 } from '../../domain/agent';
@@ -51,10 +52,16 @@ import { WEB_FETCH_ID, WEB_TOOL_IDS } from '../web/tool';
 import { MAX_OUTPUT_CHARS, RUNTIME_SCHEMA, type RuntimeRepository, type RuntimeSnapshot } from './repository';
 
 export const DEFAULT_PROVIDER_ID = 'claude-code';
+/** tasks that may wait in one agent's queue */
+export const MAX_QUEUE = 20;
+/** after a restart, waiting tasks start a moment later (the connections are checked first) */
+const RESUME_QUEUE_MS = 3_000;
 
 export type { AgentIdentity };
 
 export interface LiveRuntimeOptions {
+  /** after a restart, how long waiting tasks wait before they start (default 3 s) */
+  resumeQueueMs?: number;
   /** name and role of an agent (from its Character), for the system prompt */
   identity?: (agentId: string) => AgentIdentity | undefined;
   /** the colleagues an agent may hand work to, for its system prompt (when delegate_task is offered) */
@@ -160,6 +167,8 @@ export class LiveRuntime implements AgentRuntime {
   }
 
   private onAgentDeleted(agentId: string) {
+    // its waiting tasks go first, so none starts when the running one stops
+    for (const t of this.queued(agentId)) this.removeQueued(t.id);
     if (this.active.has(agentId)) void this.cancel(agentId).catch(() => undefined);
     if (!this.agents.delete(agentId)) return;
     void this.repo.flush(this.snapshot);
@@ -174,6 +183,9 @@ export class LiveRuntime implements AgentRuntime {
     // write migrated records back now, not at the next change
     if (snap.agents.some((a) => !a.connectionId)) await this.repo.flush(this.snapshot);
     this.changed();
+    // tasks that were waiting when RealmNest closed start again
+    const waiting = new Set(snap.tasks.filter((t) => t.status === 'queued' && t.pending).map((t) => t.agentId));
+    if (waiting.size) setTimeout(() => waiting.forEach((id) => this.startNext(id)), this.opts.resumeQueueMs ?? RESUME_QUEUE_MS);
   }
 
   // ── React glue ───────────────────────────────────────────
@@ -255,6 +267,8 @@ export class LiveRuntime implements AgentRuntime {
   startTask(
     agentId: string,
     input: { prompt: string; title?: string; attachments?: AttachmentInput[]; skillIds?: string[]; delegatedBy?: Delegator; crew?: AgentTask['crew']; workflow?: AgentTask['workflow']; /** a model wrote the prompt (Telegram's concierge) */ modelWritten?: boolean },
+    /** a queued task starting now: it keeps its id and place in the history */
+    from?: AgentTask,
   ): { task: AgentTask; run: AgentRun } {
     const typed = input.prompt.trim();
     const inputs = input.attachments ?? [];
@@ -304,13 +318,13 @@ export class LiveRuntime implements AgentRuntime {
 
     const t = this.now();
     const task: AgentTask = {
-      id: this.newId('task'),
+      id: from?.id ?? this.newId('task'),
       agentId,
       title: input.title?.trim() || titleOf(prompt || typed || inputs[0].name),
       prompt,
       status: 'queued',
       runIds: [],
-      createdAt: t,
+      createdAt: from?.createdAt ?? t,
       updatedAt: t,
       ...(explicit.length && { skillIds: explicit }),
       ...(input.delegatedBy && { delegatedBy: input.delegatedBy }),
@@ -331,7 +345,7 @@ export class LiveRuntime implements AgentRuntime {
     }
     this.tasks.set(task.id, task);
     if (byModel) this.modelWritten.add(task.id);
-    this.emit('task.status.changed', { taskId: task.id, agentId, from: null, to: 'queued' });
+    if (!from) this.emit('task.status.changed', { taskId: task.id, agentId, from: null, to: 'queued' });
 
     const run: AgentRun = { id: this.newId('run'), taskId: task.id, agentId, providerId: provider.id, connectionId, model, status: 'starting', createdAt: t, output: '', ...(skill?.refs.length && { skills: skill.refs }), ...(input.delegatedBy && { parentRunId: input.delegatedBy.runId }) };
     this.runs.set(run.id, run);
@@ -357,6 +371,77 @@ export class LiveRuntime implements AgentRuntime {
       }
     });
     return { task, run };
+  }
+
+  // ── queue ────────────────────────────────────────────────
+  /**
+   * Give the agent a task: it starts now when the agent is free; otherwise it waits in the agent's
+   * queue and starts by itself when the agent is done (docs/RUNTIME.md "Queue"). What can be checked
+   * now throws now (nothing to do, an unknown agent, a full queue, a file that is not stored); the
+   * rest is checked when the task starts.
+   */
+  giveTask(agentId: string, input: QueuedTaskInput & { title?: string }): { task: AgentTask; run?: AgentRun; queued: boolean } {
+    if (!this.active.has(agentId)) return { ...this.startTask(agentId, input), queued: false };
+    const typed = input.prompt.trim();
+    const files = input.attachments ?? [];
+    if (!typed && !files.length) throw new LiveRuntimeError('Write a task first.');
+    if (this.opts.identity && !this.opts.identity(agentId)) throw new LiveRuntimeError('This agent does not exist (any more).', 'UNKNOWN_AGENT');
+    if (this.queued(agentId).length >= MAX_QUEUE) throw new LiveRuntimeError(`This agent already has ${MAX_QUEUE} tasks waiting.`, 'QUEUE_FULL');
+    const problem = attachmentProblem(files);
+    if (problem) throw new LiveRuntimeError(problem, 'INVALID_FILE');
+    // a queued task keeps files by reference (the store has them), never their bytes
+    const kept = files.map(({ data: _data, ...meta }) => meta);
+    const lost = kept.find((a) => !a.storageRef && !(a.kind === 'text' && a.text !== undefined));
+    if (lost) throw new LiveRuntimeError(`${lost.name} could not be kept for later: give the task when the agent is free.`, 'INVALID_FILE');
+    const t = this.now();
+    const task: AgentTask = {
+      id: this.newId('task'),
+      agentId,
+      title: input.title?.trim() || titleOf(typed || kept[0].name),
+      prompt: typed,
+      status: 'queued',
+      runIds: [],
+      createdAt: t,
+      updatedAt: t,
+      pending: { prompt: input.prompt, ...(kept.length && { attachments: kept }), ...(input.skillIds?.length && { skillIds: input.skillIds }), ...(input.modelWritten && { modelWritten: true }) },
+    };
+    this.tasks.set(task.id, task);
+    this.emit('task.status.changed', { taskId: task.id, agentId, from: null, to: 'queued' });
+    void this.repo.flush(this.snapshot);
+    this.changed();
+    return { task, queued: true };
+  }
+
+  /** the agent's waiting tasks, oldest first */
+  queued(agentId: string): AgentTask[] {
+    return [...this.tasks.values()].filter((t) => t.agentId === agentId && t.status === 'queued' && t.pending).sort((a, b) => a.createdAt - b.createdAt);
+  }
+
+  /** take a waiting task out of the queue (it stays in the history, cancelled) */
+  removeQueued(taskId: string) {
+    const task = this.tasks.get(taskId);
+    if (!task || task.status !== 'queued' || !task.pending) return;
+    delete task.pending;
+    this.setTask(task, 'cancelled');
+    void this.repo.flush(this.snapshot);
+    this.changed();
+  }
+
+  /** the agent is free: its oldest waiting task starts (one that cannot start fails, and the next one tries) */
+  private startNext(agentId: string) {
+    for (let next = this.queued(agentId)[0]; next && !this.active.has(agentId); next = this.queued(agentId)[0]) {
+      const input = next.pending!;
+      delete next.pending;
+      try {
+        this.startTask(agentId, { ...input, title: next.title }, next);
+        return;
+      } catch (e) {
+        next.error = { code: e instanceof LiveRuntimeError ? (e.code ?? 'cannot_start') : 'cannot_start', message: e instanceof Error ? e.message : String(e) };
+        this.setTask(next, 'failed');
+        void this.repo.flush(this.snapshot);
+        this.changed();
+      }
+    }
   }
 
   /** why this model cannot take a kind of attachment (undefined: it can) */
@@ -621,6 +706,8 @@ export class LiveRuntime implements AgentRuntime {
   private toIdle(agentId: string) {
     this.setAgent(agentId, 'idle');
     this.emit('agent.idle', { agentId });
+    // the next waiting task, after the listeners of this run's end: a crew or workflow step they start goes first
+    queueMicrotask(() => this.startNext(agentId));
   }
 
   // ── state machines ───────────────────────────────────────

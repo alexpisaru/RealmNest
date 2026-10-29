@@ -2,7 +2,7 @@
 // as it streams, cancel it, see past results. Everything shown comes from the
 // LiveRuntime; nothing here changes what the character does on screen.
 
-import { Paperclip, Play, Square } from 'lucide-react';
+import { ListPlus, Paperclip, Play, Square, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { AttachmentKind } from '../domain/attachment';
 import { ArtifactStrip, FileChip, SkillsUsed, StoredAttachment, useArtifacts, usePendingFiles } from './files/FileViews';
@@ -53,7 +53,9 @@ export function LiveTaskPanel({ agentId }: { agentId: string }) {
   const active = live.activeRun(agentId);
   const [prompt, setPrompt] = useState('');
   const [error, setError] = useState('');
-  const tasks = live.tasksOf(agentId);
+  // the waiting ones are listed apart (Queue), not as the latest task or in the history
+  const tasks = live.tasksOf(agentId).filter((x) => !(x.status === 'queued' && x.pending));
+  const queue = live.queued(agentId);
   const latest = tasks[0];
   const shown: AgentRun | undefined = active ?? (latest ? live.runsOf(latest.id).at(-1) : undefined);
   const artifacts = useArtifacts();
@@ -88,7 +90,8 @@ export function LiveTaskPanel({ agentId }: { agentId: string }) {
       if (pending.loading) throw new LiveRuntimeError(t('files.waiting'));
       // a new installation has none (0.11.1): say where to add one, in the user's language
       if (!connections.list().length) throw new LiveRuntimeError(t('chat.noConnections'));
-      live.startTask(agentId, { prompt, attachments: pending.ready });
+      // a busy agent takes it in its queue: it starts when the current task ends
+      live.giveTask(agentId, { prompt, attachments: pending.ready });
       setPrompt('');
       pending.clear();
     } catch (err) {
@@ -161,53 +164,6 @@ export function LiveTaskPanel({ agentId }: { agentId: string }) {
       {runConnection && <AgentTools agentId={agentId} connectionId={runConnection} model={runModel} name={name} disabled={!!active} />}
 
       <h4 className="ins-section">{t('a.live.work')}</h4>
-      {!active && (
-        <>
-          <textarea
-            ref={taskBox}
-            rows={3}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onPaste={(e) => {
-              const f = [...e.clipboardData.files];
-              if (f.length) (e.preventDefault(), pending.add(f, 'paste'));
-            }}
-            onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
-            onDrop={(e) => {
-              if (!e.dataTransfer.files.length) return;
-              e.preventDefault();
-              pending.add([...e.dataTransfer.files], 'drop');
-            }}
-            placeholder={t('a.live.taskPh')}
-            aria-label={t('a.live.task')}
-          />
-          {pending.items.length > 0 && (
-            <ul className="composer-files task-files" aria-label={t('task.files')}>
-              {pending.items.map((a) => (
-                <FileChip key={a.key} a={a} onRemove={() => pending.remove(a.key)} />
-              ))}
-            </ul>
-          )}
-          <div className="row">
-            <Button size="sm" icon={<Paperclip size={14} />} onClick={() => picker.current?.click()}>
-              {t('task.attach')}
-            </Button>
-            <input
-              ref={picker}
-              type="file"
-              multiple
-              hidden
-              onChange={(e) => {
-                if (e.target.files?.length) pending.add([...e.target.files], 'picker');
-                e.target.value = '';
-              }}
-            />
-            <Button tone="primary" size="sm" icon={<Play size={14} />} onClick={start} disabled={(!prompt.trim() && !pending.ready.length) || pending.loading}>
-              {t('a.live.run')}
-            </Button>
-          </div>
-        </>
-      )}
       {active && (
         <div className="row">
           <span className="muted">{td(latest?.title)}</span>
@@ -216,6 +172,64 @@ export function LiveTaskPanel({ agentId }: { agentId: string }) {
           </Button>
         </div>
       )}
+      {queue.length > 0 && (
+        <div className="live-queue">
+          <h5 className="ins-sub">{t('a.live.queued', { n: queue.length })}</h5>
+          <ol>
+            {queue.map((q) => (
+              <li key={q.id}>
+                <span>{td(q.title)}</span>
+                <button type="button" className="icon-btn" onClick={() => live.removeQueued(q.id)} aria-label={t('a.live.unqueue')} title={t('a.live.unqueue')}>
+                  <X size={14} />
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      <textarea
+        ref={taskBox}
+        rows={3}
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        onPaste={(e) => {
+          const f = [...e.clipboardData.files];
+          if (f.length) (e.preventDefault(), pending.add(f, 'paste'));
+        }}
+        onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
+        onDrop={(e) => {
+          if (!e.dataTransfer.files.length) return;
+          e.preventDefault();
+          pending.add([...e.dataTransfer.files], 'drop');
+        }}
+        placeholder={t('a.live.taskPh')}
+        aria-label={t('a.live.task')}
+      />
+      {pending.items.length > 0 && (
+        <ul className="composer-files task-files" aria-label={t('task.files')}>
+          {pending.items.map((a) => (
+            <FileChip key={a.key} a={a} onRemove={() => pending.remove(a.key)} />
+          ))}
+        </ul>
+      )}
+      <div className="row">
+        <Button size="sm" icon={<Paperclip size={14} />} onClick={() => picker.current?.click()}>
+          {t('task.attach')}
+        </Button>
+        <input
+          ref={picker}
+          type="file"
+          multiple
+          hidden
+          onChange={(e) => {
+            if (e.target.files?.length) pending.add([...e.target.files], 'picker');
+            e.target.value = '';
+          }}
+        />
+        <Button tone="primary" size="sm" icon={active ? <ListPlus size={14} /> : <Play size={14} />} onClick={start} disabled={(!prompt.trim() && !pending.ready.length) || pending.loading}>
+          {active ? t('a.live.queue') : t('a.live.run')}
+        </Button>
+      </div>
       {error && <p className="live-error">{error}</p>}
 
       {shown && (

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Tasks wait in the agent's queue.** A task given to an agent that is already working is no longer refused: it waits and starts by itself when the agent is done, oldest first. The agent panel keeps the task box (*Add to queue*) and lists the queue with a remove button; Telegram says the task is queued and sends the answer when it has run. Queued tasks survive a restart; files wait by reference; at most 20 per agent. Stopping the current task starts the next one.
+
 ## 0.13.0 Public Beta (2026-10-29)
 
 Updates, notifications, the web for every provider, and formatted answers. Release notes: [docs/RELEASE_NOTES_0.13.0.md](docs/RELEASE_NOTES_0.13.0.md).

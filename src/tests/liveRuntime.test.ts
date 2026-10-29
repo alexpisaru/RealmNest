@@ -65,13 +65,13 @@ const hangs: Script = async function* (req) {
   yield { type: 'run.completed', text: 'should never count' };
 };
 
-function setup(script: Script = succeeds('RealmNest agent ', 'runtime successful.'), storage = new MemoryAdapter()) {
+function setup(script: Script = succeeds('RealmNest agent ', 'runtime successful.'), storage = new MemoryAdapter(), extra: { resumeQueueMs?: number } = {}) {
   const bus = new EventBus(2000);
   const provider = new FakeProvider('claude-code', script);
   const providers = new ProviderService(new ProviderRegistry().register(provider), bus);
   const repo = new RuntimeRepository(storage, 10);
   let n = 0;
-  const live = new LiveRuntime(bus, providers, repo, { identity: (id) => ({ name: id === 'alex' ? 'Alex' : 'Bea', role: 'Developer' }), newId: (k) => `${k}-${++n}` });
+  const live = new LiveRuntime(bus, providers, repo, { identity: (id) => ({ name: id === 'alex' ? 'Alex' : 'Bea', role: 'Developer' }), newId: (k) => `${k}-${++n}`, ...extra });
   const types = () => [...bus.log].reverse().map((e) => e.type);
   const of = <K extends EventType>(k: K) => [...bus.log].reverse().filter((e): e is LoggedEvent<K> => e.type === k);
   return { bus, live, provider, storage, repo, types, of };
@@ -432,5 +432,73 @@ describe('LiveRuntime: hardening', () => {
       expect(run.skills).toBeUndefined();
     }
     expect(asked).toHaveLength(1);
+  });
+});
+
+describe('LiveRuntime: the queue', () => {
+  it('a task for a busy agent waits, then starts by itself when the agent is done (keeping its id)', async () => {
+    const { live, provider } = setup();
+    const first = live.giveTask('alex', { prompt: 'first' });
+    expect(first.queued).toBe(false);
+    const second = live.giveTask('alex', { prompt: 'second', title: 'The second one' });
+    const third = live.giveTask('alex', { prompt: 'third' });
+    expect([second.queued, third.queued]).toEqual([true, true]);
+    expect(live.queued('alex').map((t) => t.id)).toEqual([second.task.id, third.task.id]);
+    expect(second.task).toMatchObject({ status: 'queued', title: 'The second one', runIds: [] });
+    await until(() => live.getTask(third.task.id)?.status === 'completed');
+    expect(provider.requests.map((r) => r.messages.at(-1)!.content)).toEqual([expect.stringContaining('first'), expect.stringContaining('second'), expect.stringContaining('third')]);
+    expect(live.getTask(second.task.id)).toMatchObject({ status: 'completed', title: 'The second one' });
+    expect(live.getTask(second.task.id)!.pending).toBeUndefined();
+    expect(live.queued('alex')).toEqual([]);
+    expect(live.agentStatus('alex')).toBe('idle');
+  });
+
+  it('a waiting task can be taken out; stopping the current one starts the next', async () => {
+    const { live, provider } = setup(hangs);
+    live.giveTask('alex', { prompt: 'one' });
+    const two = live.giveTask('alex', { prompt: 'two' });
+    const three = live.giveTask('alex', { prompt: 'three' });
+    live.removeQueued(two.task.id);
+    expect(live.getTask(two.task.id)!.status).toBe('cancelled');
+    await until(() => provider.requests.length === 1);
+    await live.cancel('alex');
+    await until(() => live.activeRun('alex')?.taskId === three.task.id && provider.requests.length === 2);
+    expect(provider.requests[1].messages.at(-1)!.content).toContain('three');
+    await live.cancel('alex');
+  });
+
+  it('waiting tasks survive a restart and start again; one that cannot start fails and the next tries', async () => {
+    const storage = new MemoryAdapter();
+    const a = setup(hangs, storage);
+    a.live.giveTask('alex', { prompt: 'running' });
+    const one = a.live.giveTask('alex', { prompt: 'waiting one' });
+    const two = a.live.giveTask('alex', { prompt: 'waiting two' });
+    await a.repo.flush(a.live.snapshot);
+    // RealmNest closed: the running task was interrupted, the waiting ones wait on
+    const b = setup(succeeds('done'), storage, { resumeQueueMs: 5 });
+    await b.live.init();
+    expect(b.live.queued('alex').map((t) => t.id)).toEqual([one.task.id, two.task.id]);
+    await until(() => b.live.getTask(two.task.id)?.status === 'completed');
+    expect(b.live.getTask(one.task.id)!.status).toBe('completed');
+    const c = setup(succeeds('done'), new MemoryAdapter());
+    c.live.startTask('alex', { prompt: 'busy' });
+    const later = c.live.giveTask('alex', { prompt: 'later' });
+    c.live.updateAgent('alex', { connectionId: 'gone' });
+    await until(() => c.live.getTask(later.task.id)?.status === 'failed');
+    expect(c.live.getTask(later.task.id)!.error?.message).toMatch(/no usable AI connection/);
+  });
+
+  it('checks what it can at once: empty task, unknown agent, files not stored, a full queue; a deleted agent loses its queue', async () => {
+    const { live, bus } = setup(hangs);
+    live.giveTask('alex', { prompt: 'busy' });
+    expect(() => live.giveTask('alex', { prompt: '  ' })).toThrow(/Write a task/);
+    expect(() => live.giveTask('alex', { prompt: 'x', attachments: [{ name: 'a.png', kind: 'image', mime: 'image/png', size: 4, data: 'AAAA', createdAt: 0 }] })).toThrow(/could not be kept/);
+    const stored = live.giveTask('alex', { prompt: 'x', attachments: [{ name: 'a.png', kind: 'image', mime: 'image/png', size: 4, data: 'AAAA', storageRef: 'sha256:abc', createdAt: 0 }] });
+    expect(stored.task.pending?.attachments?.[0]).not.toHaveProperty('data');
+    for (let i = live.queued('alex').length; i < 20; i++) live.giveTask('alex', { prompt: `t${i}` });
+    expect(() => live.giveTask('alex', { prompt: 'one too many' })).toThrow(/20 tasks waiting/);
+    bus.emit('character.deleted', { id: 'alex', name: 'Alex' });
+    expect(live.queued('alex')).toEqual([]);
+    await until(() => !live.activeRun('alex'));
   });
 });

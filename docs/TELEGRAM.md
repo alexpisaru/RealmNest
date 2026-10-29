@@ -14,7 +14,7 @@ Settings › Integrations › Telegram:
 | | |
 | --- | --- |
 | free text | the **concierge** (the Chat route's model) passes it to an agent, a crew or a workflow, answers status questions, or sends a file |
-| `/agent Name`, `/agents` | talk to that agent: every message is a task for it (its own connection, model, tools and approvals); the answer comes back when it ends |
+| `/agent Name`, `/agents` | talk to that agent: every message is a task for it (its own connection, model, tools and approvals); the answer comes back when it ends. A busy agent puts the task in its queue (RUNTIME.md "Queue"): the chat is told its place, and the answer comes when it has run, or a note if it was taken out of the queue or could not start |
 | `/crew Name`, `/crews` | the next message is the crew's goal; its plan and final result come with buttons |
 | `/run Name`, `/workflows` | starts a workflow, asking its inputs one by one |
 | `/status`, `/tasks` | who works on what, open runs, what waits for you |

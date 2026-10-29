@@ -12,7 +12,7 @@ import { crewRevision, type CrewRun } from '../domain/crew';
 const tick = () => new Promise((r) => setImmediate(r));
 const CHAT = 42;
 
-function rig(o: { concierge?: string; crews?: TelegramDeps['crews']; users?: TgUser[] } = {}) {
+function rig(o: { concierge?: string; crews?: TelegramDeps['crews']; users?: TgUser[]; queue?: boolean } = {}) {
   const sent: { chatId: number; text: string; buttons?: TgButton[][] }[] = [];
   const edits: string[] = [];
   const transport: TelegramTransport = {
@@ -52,6 +52,15 @@ function rig(o: { concierge?: string; crews?: TelegramDeps['crews']; users?: TgU
       startTask: (agentId, i) => (tasks.push({ agentId, prompt: i.prompt, ...(i.attachments && { attachments: i.attachments }), ...(i.modelWritten && { modelWritten: true }) }), { run: { id: `run-${tasks.length}` } }),
       activeRun: (id) => (id === busy ? { id: 'x' } : undefined),
       cancel: () => undefined,
+      // with the runtime's queue: a busy agent takes the task in its queue (docs/RUNTIME.md "Queue")
+      ...(o.queue && {
+        giveTask: (agentId: string, i: { prompt: string }) => {
+          tasks.push({ agentId, prompt: i.prompt });
+          return agentId === busy ? { task: { id: `task-${tasks.length}` }, queued: true } : { task: { id: `task-${tasks.length}` }, run: { id: `run-${tasks.length}` }, queued: false };
+        },
+        queueLength: () => 1,
+        queuedEnd: (id: string) => (id === 'task-gone' ? { started: false } : { started: true }),
+      }),
     },
     crews: o.crews ?? { list: () => [], runsOf: () => [], run: () => undefined, start: () => { throw new Error('no'); }, approvePlan: () => undefined, replan: () => undefined, approveFinal: () => undefined, requestChanges: () => undefined, cancel: () => undefined },
     workflows: { all: () => [], get: () => undefined },
@@ -102,6 +111,21 @@ describe('Telegram bridge', () => {
     expect(tasks[0]).toMatchObject({ agentId: 'maya', prompt: 'Riassumilo', attachments: [{ name: 'brief.pdf', kind: 'pdf', source: 'external' }] });
     await tg.onEvent({ t: 'message', chatId: CHAT, userId: CHAT, messageId: 5, file: { fileId: 'v', kind: 'voice' } });
     expect(sent.at(-1)!.text).toContain('vocale');
+  });
+
+  it('with the queue, a busy agent takes the task; the answer comes when the queued task has run', async () => {
+    const { tg, sent, tasks, bus, setBusy } = rig({ queue: true });
+    await tg.init();
+    await tg.onEvent({ t: 'message', chatId: CHAT, userId: CHAT, messageId: 1, text: '/agent Maya' });
+    setBusy('maya');
+    await tg.onEvent({ t: 'message', chatId: CHAT, userId: CHAT, messageId: 2, text: 'Prepara il report' });
+    expect(tasks).toEqual([{ agentId: 'maya', prompt: 'Prepara il report' }]);
+    expect(sent.at(-1)!.text).toContain('in coda (1°)');
+    // later the queued task gets a run and ends: the answer comes back to this chat
+    bus.emit('agent.run.completed', { agentId: 'maya', runId: 'run-later', taskId: 'task-1', result: 'Report pronto.' });
+    await tick();
+    await tick();
+    expect(sent.at(-1)!.text).toBe('<b>Maya</b> · <i>Research lead</i>\n\nReport pronto.');
   });
 
   it('a tool approval arrives with buttons; pressing one decides it; deciding on the desktop updates the message', async () => {
