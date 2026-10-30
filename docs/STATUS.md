@@ -1,4 +1,15 @@
-# RealmNest OS: status checkpoint (29 October 2026)
+# RealmNest OS: status checkpoint (30 October 2026)
+
+## RealmNest OS 0.14.0 Public Beta — release status
+
+| | |
+| --- | --- |
+| changes | crews that ask the user, share a working folder and go through lists ("for each"); queues for agents and chats; prices in the model menus; Skill updates from GitHub ([RELEASE_CANDIDATE_0.14.0.md](RELEASE_CANDIDATE_0.14.0.md)) |
+| source | `release-staging/RealmNest-OS-0.14.0`, build commit `72d9103` |
+| installer | `RealmNest-OS_0.14.0_x64-setup.exe` (NSIS, per-user, 83.2 MiB, SHA-256 `17407158…a1bb`), not code-signed; updater signature and `latest.json` next to it |
+| checks | TypeScript clean; Vitest 888 tests in 53 files; Rust 177 tests, fmt and clippy clean |
+| acceptance | clean install (empty profile, every screen), updater from a signed 0.13.99 test build (0.13.0 code) to the real 0.14.0 installer, manual upgrade 0.13.0 → 0.14.0 on the owner's data (backed up, restored byte for byte, data kept) |
+| verdict | **READY FOR 0.14.0 PUBLIC BETA** |
 
 ## RealmNest OS 0.13.0 Public Beta — release status
 
