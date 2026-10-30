@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.13.0_Public_Beta-e8a46a" alt="Version 0.13.0 Public Beta">
+  <img src="https://img.shields.io/badge/version-0.14.0_Public_Beta-e8a46a" alt="Version 0.14.0 Public Beta">
   <img src="https://img.shields.io/badge/platform-Windows_10_%7C_11-3b82c4" alt="Windows 10 and 11">
   <img src="https://img.shields.io/badge/license-AGPL--3.0-59c08f" alt="License AGPL-3.0">
   <img src="https://img.shields.io/badge/telemetry-none-555" alt="No telemetry">
@@ -150,7 +150,7 @@ The full picture, including how to remove everything, is in [docs/PRIVACY.md](do
 
 ## Install
 
-1. From the [latest release](../../releases/latest), download `RealmNest-OS_0.13.0_x64-setup.exe` and `SHA256SUMS.txt`, then check the installer with `Get-FileHash RealmNest-OS_0.13.0_x64-setup.exe` (SHA-256).
+1. From the [latest release](../../releases/latest), download `RealmNest-OS_0.14.0_x64-setup.exe` and `SHA256SUMS.txt`, then check the installer with `Get-FileHash RealmNest-OS_0.14.0_x64-setup.exe` (SHA-256).
 2. Run it. It installs for your Windows user only, with no administrator rights, and adds RealmNest OS to the Start menu.
    - It is **not code-signed** yet, so Windows SmartScreen may say "Windows protected your PC". Choose *More info › Run anyway* only if the checksum matches.
    - From 0.13.0 on RealmNest updates itself: when a new version is out it asks, then downloads, verifies and installs it. From 0.12.0 or older, run the new installer over the old version once: your data stays.

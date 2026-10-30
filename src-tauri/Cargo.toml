@@ -1,6 +1,6 @@
 [package]
 name = "realmnest-os"
-version = "0.13.0"
+version = "0.14.0"
 license = "AGPL-3.0-or-later"
 authors = ["Marius Alexandru Pisaru"]
 description = "RealmNest OS — a visual operating environment for AI agents"
