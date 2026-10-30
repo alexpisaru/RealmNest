@@ -341,3 +341,28 @@ describe('Crew v2: an agent asks the user', () => {
     expect(crews.run(run.id)!.plan[2].status).toBe('skipped');
   });
 });
+
+describe('Crew v2: a shared working folder', () => {
+  it('every task of the crew works in its folder and is told so; the folder must be a full path', async () => {
+    const agents = new Agents();
+    const { crews, live } = setup(agents);
+    await crews.init();
+    expect(() => crews.create({ ...LAUNCH, workspace: 'relative/folder' })).toThrow(/full path/);
+    const crew = crews.create({ ...LAUNCH, workspace: 'D:/Crews/Launch' });
+    expect(crew.workspace).toBe('D:/Crews/Launch');
+    const run = crews.start(crew.id);
+    await until(() => crews.run(run.id)!.status === 'awaiting_plan');
+    expect(crews.run(run.id)!.crew.workspace).toBe('D:/Crews/Launch');
+    crews.approvePlan(run.id);
+    await until(() => crews.run(run.id)!.status === 'awaiting_approval');
+    // the plan, the work, the reviews and the final result all ran in the shared folder
+    const tasks = ['hana', 'priya', 'kenji', 'lena'].flatMap((id) => live.tasksOf(id)).filter((t) => t.crew?.runId === run.id);
+    expect(tasks.length).toBeGreaterThan(4);
+    expect(tasks.every((t) => t.workspace === 'D:/Crews/Launch')).toBe(true);
+    expect(agents.prompts.find((p) => p.text.includes('Your task (T1)'))!.text).toContain('The crew shares a working folder');
+    expect(agents.prompts.find((p) => p.text.includes('coordinator of a crew'))!.text).toContain('The crew shares a working folder');
+    // without a folder nothing changes
+    const plain = crews.update(crew.id, { workspace: undefined });
+    expect(plain.workspace).toBeUndefined();
+  });
+});

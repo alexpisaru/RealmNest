@@ -32,6 +32,8 @@ export interface Crew {
   brief?: string;
   /** shared files every task receives (stored in the FileStore) */
   files?: Attachment[];
+  /** a folder every task of the crew works in: its file tools read and write there (an absolute path) */
+  workspace?: string;
   templateId?: string;
   createdAt: number;
   updatedAt: number;
@@ -112,7 +114,7 @@ export interface CrewRun {
   id: string;
   crewId: string;
   /** the crew as it was when the run started (members, roles, brief) */
-  crew: Pick<Crew, 'name' | 'worldId' | 'coordinatorId' | 'reviewerId' | 'members' | 'brief' | 'files'>;
+  crew: Pick<Crew, 'name' | 'worldId' | 'coordinatorId' | 'reviewerId' | 'members' | 'brief' | 'files' | 'workspace'>;
   goal: string;
   status: CrewRunStatus;
   plan: CrewTask[];

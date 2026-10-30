@@ -101,6 +101,8 @@ export interface AgentTask {
   crew?: { crewId: string; runId: string; taskId?: string; kind: 'plan' | 'work' | 'review' | 'assemble' };
   /** a workflow run's node (docs/WORKFLOWS.md) */
   workflow?: { workflowId: string; runId: string; nodeId: string };
+  /** the folder its file tools use for this task (a crew's shared folder); none: the agent's own */
+  workspace?: string;
   /** waiting in the agent's queue (status queued): what starts it once the agent is free (docs/RUNTIME.md "Queue") */
   pending?: QueuedTaskInput;
   /** why it never started (a queued task that could not start, or was removed) */

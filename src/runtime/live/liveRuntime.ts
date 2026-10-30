@@ -266,7 +266,7 @@ export class LiveRuntime implements AgentRuntime {
    */
   startTask(
     agentId: string,
-    input: { prompt: string; title?: string; attachments?: AttachmentInput[]; skillIds?: string[]; delegatedBy?: Delegator; crew?: AgentTask['crew']; workflow?: AgentTask['workflow']; /** a model wrote the prompt (Telegram's concierge) */ modelWritten?: boolean },
+    input: { prompt: string; title?: string; attachments?: AttachmentInput[]; skillIds?: string[]; delegatedBy?: Delegator; crew?: AgentTask['crew']; workflow?: AgentTask['workflow']; /** a model wrote the prompt (Telegram's concierge) */ modelWritten?: boolean; /** the folder its file tools use (a crew's shared folder) */ workspace?: string },
     /** a queued task starting now: it keeps its id and place in the history */
     from?: AgentTask,
   ): { task: AgentTask; run: AgentRun } {
@@ -330,6 +330,7 @@ export class LiveRuntime implements AgentRuntime {
       ...(input.delegatedBy && { delegatedBy: input.delegatedBy }),
       ...(input.crew && { crew: input.crew }),
       ...(input.workflow && { workflow: input.workflow }),
+      ...(input.workspace?.trim() && { workspace: input.workspace.trim() }),
     };
     if (inputs.length) {
       task.attachments = inputs.map(({ data, ...meta }) => {
@@ -516,13 +517,15 @@ export class LiveRuntime implements AgentRuntime {
       }
     }
     // the agent's effort: the adapter sends it only when this model lists it
-    const request = { runId: run.id, messages: [message], model, systemPrompt, workspace: def.workspace, ...(def.effort && { effort: def.effort }), ...(providerWeb && { providerWeb: true }) };
+    // the task's own folder (a crew's shared one) over the agent's
+    const workspace = task.workspace ?? def.workspace;
+    const request = { runId: run.id, messages: [message], model, systemPrompt, workspace, ...(def.effort && { effort: def.effort }), ...(providerWeb && { providerWeb: true }) };
     // the agent's tools (with Skills: only what they need, then the agent's own), when its model can call them
     const withKnowledge = knowledgeTools(sel, canSearch, skill ? skill.toolIds : (def.allowedToolIds ?? []), skill?.toolIds) ?? [];
     const withMemory = memoryTool && sel?.mode !== 'strict' ? [...withKnowledge, SEARCH_MEMORY_ID] : withKnowledge;
     // a model with its own web search reads pages with web_fetch, but never searches twice
     const toolIds = webTools ? [...withMemory, ...(providerWeb ? [WEB_FETCH_ID] : WEB_TOOL_IDS)] : withMemory;
-    const offer = toolIds.length ? this.opts.tools?.offer(connectionId, model, toolIds, def.toolPermissions, def.workspace) : undefined;
+    const offer = toolIds.length ? this.opts.tools?.offer(connectionId, model, toolIds, def.toolPermissions, workspace) : undefined;
     // the files its tools may read: this task's attachments, nothing else (run scoping)
     const files = (task.attachments ?? []).filter((a) => a.storageRef).map((a) => ({ id: a.id, name: a.name, mime: a.mime, storageRef: a.storageRef! }));
     active.handle = offer?.ids.length

@@ -112,6 +112,7 @@ function CrewEditor({ crew, onDone }: { crew?: Crew; onDone: (c?: Crew) => void 
   const [name, setName] = useState(crew?.name ?? '');
   const [goal, setGoal] = useState(crew?.goal ?? '');
   const [brief, setBrief] = useState(crew?.brief ?? '');
+  const [workspace, setWorkspace] = useState(crew?.workspace ?? '');
   const [members, setMembers] = useState<CrewMember[]>(crew?.members ?? []);
   const [coordinatorId, setCoordinator] = useState(crew?.coordinatorId ?? '');
   const [reviewerId, setReviewer] = useState(crew?.reviewerId ?? '');
@@ -145,8 +146,8 @@ function CrewEditor({ crew, onDone }: { crew?: Crew; onDone: (c?: Crew) => void 
   const save = () => {
     setError('');
     try {
-      const input = { name, worldId, goal, brief, members, coordinatorId, ...(reviewerId && { reviewerId }) };
-      onDone(crew ? crews.update(crew.id, { ...input, ...(reviewerId ? {} : { reviewerId: undefined }) }) : crews.create(input));
+      const input = { name, worldId, goal, brief, members, coordinatorId, ...(reviewerId && { reviewerId }), ...(workspace.trim() && { workspace }) };
+      onDone(crew ? crews.update(crew.id, { ...input, ...(reviewerId ? {} : { reviewerId: undefined }), ...(workspace.trim() ? {} : { workspace: undefined }) }) : crews.create(input));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -247,6 +248,11 @@ function CrewEditor({ crew, onDone }: { crew?: Crew; onDone: (c?: Crew) => void 
         <span>{t('cw.brief')}</span>
         <textarea rows={4} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder={t('cw.briefPh')} />
       </label>
+      <label className="field-stack">
+        <span>{t('cw.folder')}</span>
+        <input value={workspace} onChange={(e) => setWorkspace(e.target.value)} placeholder={t('cw.folderPh')} spellCheck={false} />
+        <small className="muted">{t('cw.folderSub')}</small>
+      </label>
       {error && <p className="chat-error">{error}</p>}
       <div className="row">
         <Button tone="primary" icon={<Check size={15} />} onClick={save} disabled={!agents.length}>
@@ -300,6 +306,11 @@ function CrewHome({ crew, onEdit, onRun, onDeleted }: { crew: Crew; onEdit: () =
         ))}
       </ul>
       {crew.brief && <p className="cw-brief">{crew.brief}</p>}
+      {crew.workspace && (
+        <p className="muted small">
+          {t('cw.folder')}: <code>{crew.workspace}</code>
+        </p>
+      )}
       <div className="cw-start">
         <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={t('cw.goalPh')} aria-label={t('cw.goal')} />
         <Button

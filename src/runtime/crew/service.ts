@@ -196,6 +196,9 @@ export class CrewService {
     for (const m of members) if (this.opts.worldOf(m.agentId) !== c.worldId) throw new CrewError(`${this.nameOf(m.agentId)} is not in this crew's world: a crew works in one world.`);
     if (!members.some((m) => m.agentId === c.coordinatorId)) throw new CrewError('The coordinator must be a member.');
     if (c.reviewerId && !members.some((m) => m.agentId === c.reviewerId)) throw new CrewError('The reviewer must be a member.');
+    // the shared folder: a full path (the file tools check it again, natively, at every call)
+    const workspace = c.workspace?.trim();
+    if (workspace && (!/^([A-Za-z]:[\\/]|\\\\|\/)/.test(workspace) || workspace.length > 1024)) throw new CrewError('The shared folder must be a full path, for example D:\\Crews\\Launch.');
     return {
       name,
       worldId: c.worldId,
@@ -205,6 +208,7 @@ export class CrewService {
       members,
       ...(c.brief?.trim() && { brief: c.brief.trim().slice(0, 8000) }),
       ...(c.files?.length && { files: c.files.slice(0, 4) }),
+      ...(workspace && { workspace }),
       ...(c.templateId && { templateId: c.templateId }),
     };
   }
@@ -238,7 +242,7 @@ export class CrewService {
     const run: CrewRun = {
       id: this.id('crun'),
       crewId,
-      crew: { name: crew.name, worldId: crew.worldId, coordinatorId: crew.coordinatorId, ...(crew.reviewerId && { reviewerId: crew.reviewerId }), members: crew.members, ...(crew.brief && { brief: crew.brief }), ...(crew.files && { files: crew.files }) },
+      crew: { name: crew.name, worldId: crew.worldId, coordinatorId: crew.coordinatorId, ...(crew.reviewerId && { reviewerId: crew.reviewerId }), members: crew.members, ...(crew.brief && { brief: crew.brief }), ...(crew.files && { files: crew.files }), ...(crew.workspace && { workspace: crew.workspace }) },
       goal: text.slice(0, 2000),
       status: 'planning',
       plan: [],
@@ -269,7 +273,7 @@ export class CrewService {
       return this.touch(run);
     }
     const members = run.crew.members.map((m) => ({ name: this.nameOf(m.agentId), role: m.role, ...(m.duty && { duty: m.duty }) }));
-    this.startAgent(run, coord, { kind: 'plan' }, `${PLAN_SYSTEM(CREW_LIMITS.tasks)}\n\n${planUser(run.goal, members, run.crew.brief)}`, `Plan · ${run.crew.name}`);
+    this.startAgent(run, coord, { kind: 'plan' }, `${PLAN_SYSTEM(CREW_LIMITS.tasks)}\n\n${planUser(run.goal, members, run.crew.brief, !!run.crew.workspace)}`, `Plan · ${run.crew.name}`);
   }
 
   /** the user's edits to the plan (before it starts) */
@@ -394,7 +398,7 @@ export class CrewService {
       .filter((d) => d.status === 'done' && d.output)
       .map((d) => ({ title: d.title, by: this.nameOf(d.assigneeId), output: d.output!.slice(0, CREW_LIMITS.handoffChars) }));
     const member = run.crew.members.find((m) => m.agentId === t.assigneeId);
-    const prompt = taskPrompt({ crew: run.crew.name, goal: run.goal, role: member?.role ?? 'member', ...(run.crew.brief && { brief: run.crew.brief }), task: t, inputs, ...(kind === 'revision' && t.output && { revision: { notes: notes ?? '', previous: t.output } }), facts: this.factsFor(run, t.id) });
+    const prompt = taskPrompt({ crew: run.crew.name, goal: run.goal, role: member?.role ?? 'member', ...(run.crew.brief && { brief: run.crew.brief }), task: t, inputs, ...(kind === 'revision' && t.output && { revision: { notes: notes ?? '', previous: t.output } }), facts: this.factsFor(run, t.id), folder: !!run.crew.workspace });
     // in the world: the author of the last input walks over to hand it off
     const from = t.dependsOn.map((d) => byId.get(d)!).filter((d) => d.status === 'done' && d.assigneeId !== t.assigneeId).sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))[0];
     if (kind === 'work' && from && !this.live.activeRun(from.assigneeId)) {
@@ -436,7 +440,7 @@ export class CrewService {
       return this.touch(run);
     }
     const outputs = run.plan.filter((t) => t.status === 'done').map((t) => ({ id: t.id, title: t.title, by: this.nameOf(t.assigneeId), output: (t.output ?? '').slice(0, CREW_LIMITS.handoffChars), ...(t.reviewNotes && { notes: t.reviewNotes }) }));
-    const started = this.startAgent(run, coord, { kind: 'assemble' }, assemblePrompt({ crew: run.crew.name, goal: run.goal, outputs, ...(feedback && run.final?.text && { feedback: { notes: feedback, previous: run.final.text } }), facts: this.factsFor(run) }), `${run.crew.name} · final`);
+    const started = this.startAgent(run, coord, { kind: 'assemble' }, assemblePrompt({ crew: run.crew.name, goal: run.goal, outputs, ...(feedback && run.final?.text && { feedback: { notes: feedback, previous: run.final.text } }), facts: this.factsFor(run), folder: !!run.crew.workspace }), `${run.crew.name} · final`);
     if (!started) return;
     run.final = { ...(run.final ?? { text: '', assembledAt: 0 }), ...(feedback && { feedback }), agentTaskId: started.task.id, runId: started.run.id };
     this.event(run, 'assemble', `${this.nameOf(coord)} assembles the final result.`, coord, undefined, ['assembles', { name: this.nameOf(coord) }]);
@@ -461,7 +465,7 @@ export class CrewService {
   private startAgent(run: CrewRun, agentId: string, link: Omit<Link, 'runId'>, prompt: string, title: string): { task: AgentTask; run: AgentRun } | undefined {
     try {
       const files: AttachmentInput[] = (link.kind === 'work' || link.kind === 'revision' ? (run.crew.files ?? []) : []).filter((f) => f.storageRef).map(({ id: _id, ...f }) => f);
-      const started = this.live.startTask(agentId, { prompt, title: title.slice(0, 120), crew: { crewId: run.crewId, runId: run.id, ...(link.taskId && { taskId: link.taskId }), kind: link.kind === 'revision' ? 'work' : link.kind }, ...(files.length && { attachments: files }) });
+      const started = this.live.startTask(agentId, { prompt, title: title.slice(0, 120), crew: { crewId: run.crewId, runId: run.id, ...(link.taskId && { taskId: link.taskId }), kind: link.kind === 'revision' ? 'work' : link.kind }, ...(files.length && { attachments: files }), ...(run.crew.workspace && { workspace: run.crew.workspace }) });
       this.links.set(started.run.id, { runId: run.id, ...link });
       return started;
     } catch (e) {

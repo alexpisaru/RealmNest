@@ -39,6 +39,7 @@ Brief: the product, the audience, the price, the tone
    - A task whose dependencies are done (or skipped) starts as an ordinary agent task, with the agent's own instructions, Skills, Knowledge, Memory, Web and connection.
    - Its prompt carries the crew's goal, the brief, the member's role, the task, the deliverable, and **the outputs of the tasks it depends on**. Each output is capped at 8,000 characters and framed as a colleague's work, not as instructions.
    - The crew's files go with every task.
+   - **Shared working folder** (optional, `Crew.workspace`, an absolute path set in the editor): every step of the run (plan, work, review, final) runs with it as the task's folder (`AgentTask.workspace`, over the agent's own), so the agents' file tools read and write there and each member sees what the others saved. The prompts say so (save files with clear names, name them in the answer, do not overwrite colleagues' files). The agents need their file tools on (their panel), and writing asks for approval as usual; the native sandbox checks the folder at every call.
    - Independent tasks run in parallel. An agent does one task at a time, so a task whose agent is busy waits, with the reason shown ("Hana is busy").
    - In the world, the author of the last input walks over to hand it off.
 5. **Review.**
@@ -100,7 +101,7 @@ Brief: the product, the audience, the price, the tone
 
 ## Limits
 
-- No crews across worlds, shared working folder, crew Knowledge bases or schedules yet. The brief plus the files is the shared context.
+- No crews across worlds, crew Knowledge bases or schedules yet. The brief, the files and the shared folder are the shared context.
 - The Coordinator may add its own "quality review" task on top of the automatic review. The user can remove it before starting.
 - Long outputs reach the next task capped at 8,000 characters each. The Artifact keeps the whole of them.
 - History lines written before the translation existed stay in English.
