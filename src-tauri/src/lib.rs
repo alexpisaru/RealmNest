@@ -29,10 +29,13 @@ struct WebRenderer;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
     // one RealmNest per user session: two would share (and overwrite) the same storage, fire
     // schedules twice and poll Telegram twice. A second start focuses the first one and quits.
+    // The lock is the app's identifier, like its storage: a build with another identifier (a test
+    // build) has its own data and may run next to it.
     #[cfg(windows)]
-    if single_instance::another_is_running() {
+    if single_instance::another_is_running(&context.config().identifier) {
         single_instance::focus_existing();
         return;
     }
@@ -206,7 +209,7 @@ pub fn run() {
             Ok(())
         })
         // Phase 2: .plugin(tauri_plugin_sql::Builder::default().build())
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building RealmNest");
     // set once the app is on its way out (exit is then never requested again)
     static EXITING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -436,7 +439,6 @@ mod single_instance {
         SetForegroundWindow, ShowWindow, SW_RESTORE,
     };
 
-    const MUTEX: &str = "Local\\app.nestra.desktop.single";
     /// the main window's title (tauri.conf.json)
     const TITLE: &str = "RealmNest OS";
 
@@ -446,8 +448,9 @@ mod single_instance {
 
     /// True when another RealmNest holds the mutex. This process keeps its handle open until it
     /// exits (the OS closes it); if the mutex cannot be made at all, RealmNest starts anyway.
-    pub fn another_is_running() -> bool {
-        let name = wide(MUTEX);
+    /// the lock `Local\<identifier>.single` (RealmNest OS: `Local\app.nestra.desktop.single`, as before)
+    pub fn another_is_running(identifier: &str) -> bool {
+        let name = wide(&format!("Local\\{identifier}.single"));
         // SAFETY: a valid NUL-terminated name, no security attributes
         let h = unsafe { CreateMutexW(std::ptr::null(), 0, name.as_ptr()) };
         !h.is_null() && unsafe { GetLastError() } == ERROR_ALREADY_EXISTS
