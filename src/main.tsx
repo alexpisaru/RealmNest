@@ -406,7 +406,8 @@ const notifier = new DesktopNotifier({
   },
   crew: (id) => {
     const r = crews.run(id);
-    const asking = r && [...r.plan].reverse().find((x) => x.status === 'needs_input')?.question;
+    // the newest question: a task's, or an item's of a "for each" task
+    const asking = r && [...r.plan.flatMap((x) => [x, ...(x.items ?? [])])].reverse().find((x) => x.status === 'needs_input')?.question;
     return r && { status: r.status, name: r.crew.name, ...(r.error && { error: r.error }), ...(asking && { asking }) };
   },
   workflow: (id) => {

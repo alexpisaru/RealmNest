@@ -744,7 +744,7 @@ export class TelegramBridge {
     if (!run) return;
     // an agent cannot go on without the user (BLOCKED): the paired users hear it, the answer is given in RealmNest
     if (kind === 'ask') {
-      const asking = [...run.plan].reverse().find((x) => x.status === 'needs_input');
+      const asking = [...run.plan.flatMap((x) => [x, ...(x.items ?? [])])].reverse().find((x) => x.status === 'needs_input');
       if (asking && this.settings.notify.approvals) for (const u of this.users()) await this.say(u.chatId, this.t('tg.crewAsk', { name: esc(run.crew.name), id: asking.id, q: esc(asking.question ?? '') }));
       return;
     }

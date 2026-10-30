@@ -3,12 +3,13 @@
 // task's details, the plan to approve, the final result to approve, and the history.
 
 import { Check, Network, Pencil, Play, Plus, RotateCcw, SkipForward, Square, Trash2, X } from 'lucide-react';
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { WORLD_BY_ID, WORLDS } from '../../data/worlds';
-import { depthOf, type Crew, type CrewMember, type CrewRun, type CrewTask } from '../../domain/crew';
+import { depthOf, type Crew, type CrewItem, type CrewMember, type CrewRun, type CrewTask } from '../../domain/crew';
 import type { TKey } from '../../i18n';
 import { CREW_TEMPLATES } from '../../runtime/crew/service';
 import { useApp, useCrews, useServices, useT, useTD } from '../context';
+import { Markdown } from '../chat/Markdown';
 import { useArtifacts } from '../files/FileViews';
 import { Button, Portrait } from '../kit';
 import { lookOf } from '../sessionManager';
@@ -409,11 +410,11 @@ function RunView({ run, onDeleted }: { run: CrewRun; onDeleted: () => void }) {
       {error && <p className="chat-error">{error}</p>}
       {run.status === 'running' &&
         run.plan
-          .filter((x) => x.status === 'needs_input')
-          .map((x) => (
-            <div key={x.id} className="cw-banner cw-ask-banner">
-              <span>{t('cw.ask.banner', { name: people.name(x.assigneeId), id: x.id })}</span>
-              <Button size="sm" tone="primary" onClick={() => setSelected(x.id)}>
+          .flatMap((x) => [...(x.status === 'needs_input' ? [{ task: x.id, id: x.id, who: x.assigneeId }] : []), ...(x.items ?? []).filter((i) => i.status === 'needs_input').map((i) => ({ task: x.id, id: i.id, who: i.assigneeId ?? x.assigneeId }))])
+          .map((q) => (
+            <div key={q.id} className="cw-banner cw-ask-banner">
+              <span>{t('cw.ask.banner', { name: people.name(q.who), id: q.id })}</span>
+              <Button size="sm" tone="primary" onClick={() => setSelected(q.task)}>
                 {t('cw.ask.open')}
               </Button>
             </div>
@@ -525,8 +526,15 @@ function Graph({ tasks, selected, onSelect }: { tasks: CrewTask[]; selected?: st
               <span className="cw-card-who">
                 <Face agentId={x.assigneeId} />
                 {people.name(x.assigneeId)}
+                {x.assignees?.map((id) => <Face key={id} agentId={id} />)}
                 {x.review && <em>{t('cw.review')}</em>}
               </span>
+              {x.forEach && (
+                <small className="cw-each">
+                  {t('cw.each', { id: x.forEach })}
+                  {x.items && ` · ${x.items.filter((i) => i.status === 'done' || i.status === 'skipped').length}/${x.items.length}`}
+                </small>
+              )}
               {x.note && <small className="muted">{x.noteKey ? t(`cw.note.${x.noteKey}` as TKey, x.noteVars ?? {}) : x.note}</small>}
             </button>
           ))}
@@ -568,6 +576,43 @@ function TaskEditor({ task, all, members, reviewer, onChange, onRemove, onClose 
         <span>{t('cw.instructions')}</span>
         <textarea rows={3} value={task.instructions} onChange={(e) => onChange({ ...task, instructions: e.target.value })} />
       </label>
+      <div className="cw-row2">
+        <label className="field-stack">
+          <span>{t('cw.eachSet')}</span>
+          <select
+            value={task.forEach ?? ''}
+            onChange={(e) => {
+              const forEach = e.target.value || undefined;
+              const { forEach: _f, assignees: _a, ...rest } = task;
+              onChange(forEach ? { ...rest, forEach, review: false, dependsOn: [...new Set([...task.dependsOn, forEach])] } : rest);
+            }}
+          >
+            <option value="">{t('cw.eachNone')}</option>
+            {all
+              .filter((x) => x.id !== task.id)
+              .map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.id} · {x.title}
+                </option>
+              ))}
+          </select>
+        </label>
+        {task.forEach && (
+          <div className="field-stack">
+            <span>{t('cw.eachWho')}</span>
+            <div className="cw-deps">
+              {members
+                .filter((m) => m.agentId !== task.assigneeId)
+                .map((m) => (
+                  <label key={m.agentId} className="cw-chip">
+                    <input type="checkbox" checked={!!task.assignees?.includes(m.agentId)} onChange={(e) => onChange({ ...task, assignees: e.target.checked ? [...(task.assignees ?? []), m.agentId] : (task.assignees ?? []).filter((a) => a !== m.agentId) })} />
+                    {people.name(m.agentId)}
+                  </label>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
       <div className="cw-deps">
         <span className="muted small">{t('cw.dependsOn')}</span>
         {all
@@ -578,7 +623,7 @@ function TaskEditor({ task, all, members, reviewer, onChange, onRemove, onClose 
               {x.id}
             </label>
           ))}
-        {reviewer && (
+        {reviewer && !task.forEach && (
           <label className="cw-chip">
             <input type="checkbox" checked={task.review} onChange={(e) => onChange({ ...task, review: e.target.checked })} />
             {t('cw.review')}
@@ -613,6 +658,8 @@ function TaskDetails({ run, task, onClose, act }: { run: CrewRun; task: CrewTask
       </p>
       {task.error && <p className="chat-error">{task.error}</p>}
       {task.status === 'needs_input' && <AnswerBox run={run} task={task} act={act} />}
+      {task.forEach && !task.items && <p className="muted small">{t('cw.eachWaits', { id: task.forEach })}</p>}
+      {!!task.items?.length && <Items run={run} task={task} act={act} />}
       {!!task.answers?.length && (
         <>
           <h4>{t('cw.answers')}</h4>
@@ -668,22 +715,62 @@ function TaskDetails({ run, task, onClose, act }: { run: CrewRun; task: CrewTask
   );
 }
 
-/** an agent asked for something it cannot get itself (BLOCKED): the user answers, or skips the task */
-function AnswerBox({ run, task, act }: { run: CrewRun; task: CrewTask; act: (fn: () => unknown) => void }) {
+/** the items of a "for each" task: one row each, with its status, who does it, its question or output */
+function Items({ run, task, act }: { run: CrewRun; task: CrewTask; act: (fn: () => unknown) => void }) {
+  const t = useT();
+  const crews = useCrews();
+  const items = task.items ?? [];
+  return (
+    <>
+      <h4>{t('cw.items', { done: String(items.filter((i) => i.status === 'done' || i.status === 'skipped').length), total: String(items.length) })}</h4>
+      <ul className="cw-items">
+        {items.map((i) => (
+          <li key={i.id}>
+            <div className="cw-item-head">
+              <code>{i.id}</code>
+              <span className="q-text" title={i.label}>
+                {i.label}
+              </span>
+              {i.assigneeId && <Face agentId={i.assigneeId} />}
+              <span className={`cw-st st-${i.status === 'running' ? 'running' : i.status}`}>{t(`cw.st.${i.status}` as TKey)}</span>
+              {(i.status === 'failed' || i.status === 'cancelled') && run.status === 'running' && (
+                <Button size="sm" tone="ghost" icon={<SkipForward size={13} />} onClick={() => act(() => crews.skipTask(run.id, task.id, i.id))}>
+                  {t('cw.skip')}
+                </Button>
+              )}
+            </div>
+            {i.error && <small className="chat-error">{i.error}</small>}
+            {i.status === 'needs_input' && <AnswerBox run={run} task={task} item={i} act={act} />}
+            {i.output && (
+              <details>
+                <summary className="muted small">{t('cw.output')}</summary>
+                <Doc text={i.output} />
+              </details>
+            )}
+            {!!i.answers?.length && <small className="muted">{i.answers.map((a) => a.answer).join(' · ')}</small>}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/** an agent asked for something it cannot get itself (BLOCKED): the user answers, or skips the task (or the item) */
+function AnswerBox({ run, task, item, act }: { run: CrewRun; task: CrewTask; item?: CrewItem; act: (fn: () => unknown) => void }) {
   const t = useT();
   const crews = useCrews();
   const people = usePeople();
   const [answer, setAnswer] = useState('');
   return (
     <div className="cw-ask">
-      <b>{t('cw.ask.title', { name: people.name(task.assigneeId) })}</b>
-      <p>{task.question}</p>
+      <b>{t('cw.ask.title', { name: people.name(item?.assigneeId ?? task.assigneeId) })}</b>
+      <p>{item ? item.question : task.question}</p>
       <textarea rows={3} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder={t('cw.ask.ph')} aria-label={t('cw.ask.ph')} />
       <div className="row">
-        <Button size="sm" tone="primary" icon={<Play size={14} />} disabled={!answer.trim()} onClick={() => act(() => (crews.answerTask(run.id, task.id, answer), setAnswer('')))}>
+        <Button size="sm" tone="primary" icon={<Play size={14} />} disabled={!answer.trim()} onClick={() => act(() => (crews.answerTask(run.id, task.id, answer, item?.id), setAnswer('')))}>
           {t('cw.ask.send')}
         </Button>
-        <Button size="sm" tone="ghost" icon={<SkipForward size={14} />} onClick={() => act(() => crews.skipTask(run.id, task.id))}>
+        <Button size="sm" tone="ghost" icon={<SkipForward size={14} />} onClick={() => act(() => crews.skipTask(run.id, task.id, item?.id))}>
           {t('cw.skip')}
         </Button>
       </div>
@@ -779,38 +866,7 @@ function History({ run }: { run: CrewRun }) {
   );
 }
 
-/** Markdown-ish text as React elements (headings, bullets, rules, bold, italics, code): never HTML */
+/** an agent's output or the final result: the same Markdown as chat answers (tables, code, links) */
 export function Doc({ text }: { text: string }) {
-  const inline = (s: string): ReactNode[] =>
-    s.split(/(\*\*[^*\n]+\*\*|`[^`\n]+`|\*[^*\s][^*\n]*\*|_[^_\s][^_\n]*_)/g).map((p, i) =>
-      p.length > 4 && p.startsWith('**') && p.endsWith('**') ? (
-        <strong key={i}>{p.slice(2, -2)}</strong>
-      ) : p.length > 2 && p.startsWith('`') && p.endsWith('`') ? (
-        <code key={i}>{p.slice(1, -1)}</code>
-      ) : p.length > 2 && ((p.startsWith('*') && p.endsWith('*')) || (p.startsWith('_') && p.endsWith('_'))) ? (
-        <em key={i}>{p.slice(1, -1)}</em>
-      ) : (
-        <Fragment key={i}>{p}</Fragment>
-      ),
-    );
-  const out: ReactNode[] = [];
-  let list: string[] = [];
-  const flush = () => {
-    if (list.length) out.push(<ul key={`l${out.length}`}>{list.map((x, i) => <li key={i}>{inline(x)}</li>)}</ul>);
-    list = [];
-  };
-  for (const line of text.split('\n')) {
-    const h = /^(#{1,4})\s+(.*)/.exec(line);
-    const b = /^\s*(?:[-*]|\d+\.)\s+(.*)/.exec(line);
-    if (b) {
-      list.push(b[1]);
-      continue;
-    }
-    flush();
-    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) out.push(<hr key={out.length} />);
-    else if (h) out.push(h[1].length <= 2 ? <h4 key={out.length}>{inline(h[2])}</h4> : <h5 key={out.length}>{inline(h[2])}</h5>);
-    else if (line.trim()) out.push(<p key={out.length}>{inline(line)}</p>);
-  }
-  flush();
-  return <div className="cw-doc">{out}</div>;
+  return <Markdown text={text} className="cw-doc" />;
 }

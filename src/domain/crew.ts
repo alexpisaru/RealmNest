@@ -62,11 +62,37 @@ export interface CrewAttempt {
   notes?: string;
 }
 
+/** one item of a "for each" task: the same work done for one entry of the list */
+export interface CrewItem {
+  /** T3.1, T3.2… */
+  id: string;
+  /** the list entry, as the list task wrote it */
+  label: string;
+  status: 'waiting' | 'running' | 'needs_input' | 'done' | 'failed' | 'cancelled' | 'skipped';
+  /** who does it (one of the task's assignees, chosen when it starts) */
+  assigneeId?: string;
+  output?: string;
+  artifactId?: string;
+  error?: string;
+  question?: string;
+  answers?: CrewAnswer[];
+  attempts: CrewAttempt[];
+}
+
 export interface CrewTask {
   /** T1, T2… */
   id: string;
   title: string;
   assigneeId: string;
+  /**
+   * "For each": the id of the task whose output is a list (one entry per line). This task then runs
+   * once per entry (CrewItem), shared among its assignees; its output is all of theirs together.
+   */
+  forEach?: string;
+  /** more members who share the items of a "for each" task with the assignee */
+  assignees?: string[];
+  /** the items of a "for each" task, made from the list when it starts */
+  items?: CrewItem[];
   instructions: string;
   /** what to hand in ("a one-page competitor table") */
   deliverable?: string;
@@ -130,6 +156,8 @@ export interface CrewRun {
 
 export const CREW_LIMITS = {
   tasks: 12,
+  /** items of one "for each" task */
+  items: 20,
   members: 8,
   /** revisions after a review asks for changes */
   revisions: 2,
@@ -150,6 +178,33 @@ export function blockedQuestion(text: string): string | undefined {
   return q || undefined;
 }
 
+/**
+ * The entries of a list a task handed in, for a "for each" task: lines that start with "- ", "* ",
+ * "• " or a number ("1." "1)"), without Markdown emphasis; a JSON array of strings works too.
+ * At most CREW_LIMITS.items, no duplicates.
+ */
+export function listItems(text: string): string[] {
+  const out: string[] = [];
+  const add = (s: string) => {
+    const v = s.replace(/\*\*|__|`/g, '').trim().slice(0, 300);
+    if (v && !out.some((x) => x.toLowerCase() === v.toLowerCase()) && out.length < CREW_LIMITS.items) out.push(v);
+  };
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^\s*(?:[-*•]|\d{1,3}[.)])\s+(.+)$/.exec(line);
+    if (m) add(m[1]);
+  }
+  if (!out.length) {
+    const json = /\[[\s\S]*\]/.exec(text)?.[0];
+    try {
+      const arr = json ? (JSON.parse(json) as unknown) : undefined;
+      if (Array.isArray(arr)) for (const x of arr) if (typeof x === 'string') add(x);
+    } catch {
+      /* not JSON */
+    }
+  }
+  return out;
+}
+
 export const isLiveCrewRun = (s: CrewRunStatus) => s === 'planning' || s === 'running' || s === 'assembling';
 /** ended for good: only these runs make room for new ones (an open run is never dropped) */
 export const isEndedCrewRun = (s: CrewRunStatus) => s === 'done' || s === 'failed' || s === 'cancelled';
@@ -157,7 +212,7 @@ export const isEndedCrewRun = (s: CrewRunStatus) => s === 'done' || s === 'faile
 /** a short fingerprint of what the user approves (the plan, or the final result): an Approve made
  *  for an older version is refused (docs/HARDENING.md I-6) */
 export function crewRevision(run: Pick<CrewRun, 'plan' | 'final'>, what: 'plan' | 'final'): string {
-  const text = what === 'plan' ? JSON.stringify(run.plan.map((t) => [t.id, t.title, t.assigneeId, t.instructions, t.deliverable ?? '', t.dependsOn, t.review])) : `${run.final?.assembledAt ?? 0}|${run.final?.text ?? ''}`;
+  const text = what === 'plan' ? JSON.stringify(run.plan.map((t) => [t.id, t.title, t.assigneeId, t.instructions, t.deliverable ?? '', t.dependsOn, t.review, t.forEach ?? '', t.assignees ?? []])) :`${run.final?.assembledAt ?? 0}|${run.final?.text ?? ''}`;
   let h = 5381;
   for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
   return `${text.length.toString(36)}.${h.toString(36)}`;

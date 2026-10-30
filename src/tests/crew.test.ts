@@ -366,3 +366,119 @@ describe('Crew v2: a shared working folder', () => {
     expect(plain.workspace).toBeUndefined();
   });
 });
+
+describe('Crew v2: for each entry of a list', () => {
+  const EACH_PLAN = {
+    tasks: [
+      { id: 'T1', title: 'Find companies', assignee: 'Priya', instructions: 'Find companies.', deliverable: 'a list, one per line starting with "- "', dependsOn: [], review: false },
+      { id: 'T2', title: 'Analyse each company', assignee: 'Kenji', assignees: ['Lena'], forEach: 'T1', instructions: 'Analyse the company.', dependsOn: ['T1'], review: true },
+      { id: 'T3', title: 'Summary', assignee: 'Hana', instructions: 'Summarise the analyses.', dependsOn: ['T2'], review: false },
+    ],
+  };
+  /** T1 hands in a list; each T2 run answers for its entry */
+  const work =
+    (o: { list?: string; blocked?: string; failing?: string } = {}) =>
+    (text: string) => {
+      if (text.includes('Your task (T1)')) return o.list ?? 'Here they are:\n- Acme\n- **Globex**\n- Initech\n- Acme';
+      const entry = /only \(colleagues do the others\):\n(.+)/.exec(text)?.[1];
+      if (entry && entry === o.blocked && !text.includes('A: ')) return `BLOCKED: what is the website of ${entry}?`;
+      if (entry) return `analysis of ${entry}`;
+      return undefined;
+    };
+
+  it('the task runs once per entry, shared by its assignees; the next task gets every entry', async () => {
+    const agents = new Agents({ plan: EACH_PLAN, ask: work() });
+    const { crews } = setup(agents);
+    await crews.init();
+    const crew = crews.create(LAUNCH);
+    const run = crews.start(crew.id);
+    await until(() => crews.run(run.id)!.status === 'awaiting_plan');
+    const t2 = crews.run(run.id)!.plan[1];
+    // a "for each" task is not reviewed item by item
+    expect(t2).toMatchObject({ forEach: 'T1', assignees: ['lena'], review: false });
+    crews.approvePlan(run.id);
+    await until(() => crews.run(run.id)!.status === 'awaiting_approval');
+    const r = crews.run(run.id)!;
+    const each = r.plan[1];
+    // the list: three entries (bold removed, the repeated one once)
+    expect(each.items!.map((i) => `${i.id}:${i.label}:${i.status}`)).toEqual(['T2.1:Acme:done', 'T2.2:Globex:done', 'T2.3:Initech:done']);
+    expect(new Set(each.items!.map((i) => i.assigneeId))).toEqual(new Set(['kenji', 'lena']));
+    expect(each.status).toBe('done');
+    expect(each.output).toContain('### Acme\nanalysis of Acme');
+    expect(each.output).toContain('### Initech\nanalysis of Initech');
+    // the summary saw every entry's output
+    // each entry knows the others, so the outputs do not repeat each other
+    expect(agents.prompts.find((p) => p.text.includes('only (colleagues do the others):\nGlobex'))!.text).toContain('does not repeat theirs: Acme · Initech');
+    const summary = agents.prompts.find((p) => p.text.includes('Your task (T3)'))!.text;
+    expect(summary).toContain('analysis of Globex');
+    expect(r.history.map((h) => h.key)).toEqual(expect.arrayContaining(['fansOut', 'eachDone']));
+  });
+
+  it('one entry can ask the user; the others go on and the answer finishes it', async () => {
+    const agents = new Agents({ plan: EACH_PLAN, ask: work({ blocked: 'Globex' }) });
+    const { crews } = setup(agents);
+    await crews.init();
+    const crew = crews.create(LAUNCH);
+    const run = crews.start(crew.id);
+    await until(() => crews.run(run.id)!.status === 'awaiting_plan');
+    crews.approvePlan(run.id);
+    await until(() => crews.run(run.id)!.plan[1].items?.find((i) => i.label === 'Globex')?.status === 'needs_input');
+    await until(() => crews.run(run.id)!.plan[1].items!.filter((i) => i.status === 'done').length === 2);
+    const r = crews.run(run.id)!;
+    expect(r.plan[1].status).toBe('running');
+    expect(r.plan[1].items![1].question).toBe('what is the website of Globex?');
+    await until(() => r.history.some((h) => h.key === 'needsYou'));
+    crews.answerTask(run.id, 'T2', 'globex.example', 'T2.2');
+    await until(() => crews.run(run.id)!.status === 'awaiting_approval');
+    expect(crews.run(run.id)!.plan[1].items!.map((i) => i.status)).toEqual(['done', 'done', 'done']);
+  });
+
+  it('no list: the task fails and says so; a failed entry is retried alone', async () => {
+    const noList = new Agents({ plan: EACH_PLAN, ask: work({ list: 'I found nothing useful.' }) });
+    const a = setup(noList);
+    await a.crews.init();
+    const crewA = a.crews.create(LAUNCH);
+    const runA = a.crews.start(crewA.id);
+    await until(() => a.crews.run(runA.id)!.status === 'awaiting_plan');
+    a.crews.approvePlan(runA.id);
+    await until(() => a.crews.run(runA.id)!.plan[1].status === 'failed');
+    expect(a.crews.run(runA.id)!.plan[1].error).toMatch(/handed in no list/);
+
+    let down = true;
+    const flaky = new Agents({ plan: EACH_PLAN, ask: work(), fail: (text) => down && text.includes('do the others):\nInitech') });
+    const b = setup(flaky);
+    await b.crews.init();
+    const crewB = b.crews.create(LAUNCH);
+    const runB = b.crews.start(crewB.id);
+    await until(() => b.crews.run(runB.id)!.status === 'awaiting_plan');
+    b.crews.approvePlan(runB.id);
+    await until(() => b.crews.run(runB.id)!.plan[1].status === 'failed');
+    const t2 = b.crews.run(runB.id)!.plan[1];
+    expect(t2.items!.map((i) => i.status)).toEqual(['done', 'done', 'failed']);
+    expect(t2.error).toMatch(/1 of 3 entries did not finish/);
+    // the task after it is blocked meanwhile
+    expect(b.crews.run(runB.id)!.plan[2].status).toBe('blocked');
+    const before = flaky.prompts.length;
+    down = false;
+    b.crews.retryTask(runB.id, 'T2');
+    await until(() => b.crews.run(runB.id)!.status === 'awaiting_approval');
+    // only the failed entry ran again (then T3 and the final)
+    expect(flaky.prompts.slice(before).filter((p) => p.text.includes('only (colleagues')).length).toBe(1);
+  });
+
+  it('a failed entry can be skipped: the task finishes with the others', async () => {
+    const agents = new Agents({ plan: EACH_PLAN, ask: work(), fail: (text) => text.includes('do the others):\nInitech') });
+    const { crews } = setup(agents);
+    await crews.init();
+    const crew = crews.create(LAUNCH);
+    const run = crews.start(crew.id);
+    await until(() => crews.run(run.id)!.status === 'awaiting_plan');
+    crews.approvePlan(run.id);
+    await until(() => crews.run(run.id)!.plan[1].status === 'failed');
+    crews.skipTask(run.id, 'T2', 'T2.3');
+    await until(() => crews.run(run.id)!.status === 'awaiting_approval');
+    const t2 = crews.run(run.id)!.plan[1];
+    expect(t2.items!.map((i) => i.status)).toEqual(['done', 'done', 'skipped']);
+    expect(t2.output).not.toContain('### Initech');
+  });
+});

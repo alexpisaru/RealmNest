@@ -63,6 +63,17 @@ Brief: the product, the audience, the price, the tone
 
 **History:** every step, with the agent who did it and when. It is stored with a translation key (`cw.ev.*`), so the UI shows it in the user's language. The notes on the cards work the same way (`cw.note.*`).
 
+## For each entry of a list
+
+A task can run once for every entry of a list that another task hands in ("find 10 companies", then "analyse each company").
+
+- **In the plan.** The task has `forEach: "<id of the list task>"` and, optionally, `assignees`: other members who share the entries with its `assignee`. The Coordinator is told when to use it (the list task's deliverable is then one entry per line starting with `- `); the plan editor has **For each entry of** (a task, or *None: once*) and **Also done by** (member chips). `cleanPlan` keeps `forEach` only when it names another task of the plan, adds it to `dependsOn`, turns review off and drops unknown assignees.
+- **Fan-out.** When the list task is done, `listItems` reads its output: bullet (`-`, `*`, `•`) or numbered lines, else a JSON array of strings; bold and code marks are removed, repeated entries kept once, at most 20 (`CREW_LIMITS.items`). Each entry becomes an item (`T2.1`, `T2.2`…, `CrewTask.items`) and the task is **working**. No list (or a skipped list task): the task fails and says so; **Retry** it after fixing the list task, or **Skip** it.
+- **Items.** Every free member of the task's team takes the next waiting item, one item per agent at a time. Each run gets the task's instructions, the other inputs as usual, and its own entry ("entry 2 of 5 only (colleagues do the others)") with the other entries named, and is told to make its work specific to its entry. The items run side by side and do not see each other's outputs, so similar entries can still come back alike (on a live run, three slogans for three names did; the final assembly wrote them apart). Items are not reviewed one by one. Each output is kept as an Artifact.
+- **An item can ask.** `BLOCKED` on an item makes that item **needs you** (`question`): the other items go on, the banner and the item row show the question, the answer (`answerTask(run, task, answer, itemId)`) runs that item again and becomes a confirmed fact like a task's answer.
+- **Done.** When every item is done or skipped, the task is done: its output is every entry's output under a `### <entry>` heading (each entry's share capped so all of them fit: the combined output reaches the next task up to 24,000 characters, three times a normal task), and the tasks after it and the final assembly get it as one input. If some items failed or were stopped, the task fails with their ids: **Retry** runs only those items again; **Skip** on an item row (`skipTask(run, task, itemId)`) leaves it out.
+- The run view: the graph card shows *for each entry of T1* with the progress (*2/3*) and the extra faces; the task's drawer lists the entries with status, who did it, its output and the answer box.
+
 ## Rules
 
 - A crew lives in **one world**. Every member is an agent of that world, so meetings and hand-offs can be seen. The Coordinator and the Reviewer are members.
@@ -104,4 +115,5 @@ Brief: the product, the audience, the price, the tone
 - No crews across worlds, crew Knowledge bases or schedules yet. The brief, the files and the shared folder are the shared context.
 - The Coordinator may add its own "quality review" task on top of the automatic review. The user can remove it before starting.
 - Long outputs reach the next task capped at 8,000 characters each. The Artifact keeps the whole of them.
+- A "for each" task goes through at most 20 entries (the rest of a longer list are left out), and its entries are not reviewed.
 - History lines written before the translation existed stay in English.

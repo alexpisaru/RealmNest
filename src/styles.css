@@ -7747,6 +7747,32 @@ option {
   display: grid;
   gap: 2px;
 }
+/* a "for each" task: the list it goes through on its card, and its entries in the drawer */
+.cw-each {
+  color: var(--accent);
+  font-size: 11.5px;
+}
+.cw-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.cw-items > li {
+  display: grid;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.cw-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+}
 .cw-drawer,
 .cw-final {
   display: flex;
@@ -7821,13 +7847,6 @@ option {
   font-size: 14px;
   line-height: 1.6;
 }
-.cw-doc p {
-  margin: 0.35em 0;
-}
-.cw-doc h4,
-.cw-doc h5 {
-  margin: 0.9em 0 0.3em;
-}
 .cw-approve {
   display: flex;
   gap: 8px;
@@ -7869,11 +7888,6 @@ option {
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
-}
-.cw-doc hr {
-  border: 0;
-  border-top: 1px solid var(--line);
-  margin: 0.8em 0;
 }
 
 /* ── Workflows (docs/WORKFLOWS.md) ───────────────────────── */
