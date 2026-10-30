@@ -15,7 +15,7 @@ function rig(over: Partial<NotifierDeps> = {}) {
     onClick: (fn) => void (click = fn),
   };
   const bus = new EventBus(100);
-  const state = { focused: false, crew: { status: 'planning', name: 'Lancio', error: undefined as string | undefined }, wf: { status: 'running', name: 'Report' }, research: { status: 'running', question: 'Pompe di calore?', agent: false } };
+  const state = { focused: false, crew: { status: 'planning', name: 'Lancio', error: undefined as string | undefined, asking: undefined as string | undefined }, wf: { status: 'running', name: 'Report' }, research: { status: 'running', question: 'Pompe di calore?', agent: false } };
   const opened: string[] = [];
   let now = 1_000_000;
   const storage = new MemoryAdapter();
@@ -121,6 +121,15 @@ describe('Windows notifications', () => {
     r.bus.emit('agent.run.completed', { ...run('maya', 't1'), result: 'ok' });
     await tick();
     expect(r.shown).toHaveLength(2);
+  });
+
+  it('a crew agent that needs the user (BLOCKED) is an approval to give', async () => {
+    const r = rig();
+    await r.n.init();
+    r.state.crew = { status: 'running', name: 'Lancio', error: undefined, asking: 'Mi serve il login della libreria inserzioni.' };
+    r.bus.emit('crew.event', { runId: 'cr1', crewId: 'c', kind: 'ask', message: '' });
+    await tick();
+    expect(r.shown).toEqual([{ title: 'Crew Lancio: serve il tuo intervento', body: 'Mi serve il login della libreria inserzioni.', tag: 'crew:cr1' }]);
   });
 
   it('a click opens what the notification was about', async () => {

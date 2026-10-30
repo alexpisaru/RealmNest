@@ -38,8 +38,16 @@ export interface Crew {
 }
 
 /** waiting: dependencies not done (or the agent is busy) · blocked: a dependency failed ·
- *  running · review: with the reviewer · done · failed · cancelled · skipped (by the user) */
-export type CrewTaskStatus = 'waiting' | 'blocked' | 'running' | 'review' | 'done' | 'failed' | 'cancelled' | 'skipped';
+ *  running · review: with the reviewer · needs_input: the agent asked the user for something it
+ *  cannot get itself · done · failed · cancelled · skipped (by the user) */
+export type CrewTaskStatus = 'waiting' | 'blocked' | 'running' | 'review' | 'needs_input' | 'done' | 'failed' | 'cancelled' | 'skipped';
+
+/** what an agent asked the user (BLOCKED: …) and the answer it got */
+export interface CrewAnswer {
+  question: string;
+  answer: string;
+  at: number;
+}
 
 export interface CrewAttempt {
   kind: 'work' | 'review' | 'revision';
@@ -79,6 +87,10 @@ export interface CrewTask {
   startedAt?: number;
   finishedAt?: number;
   error?: string;
+  /** needs_input: what the agent needs from the user, in its words */
+  question?: string;
+  /** the questions answered so far; every later attempt of the task gets them */
+  answers?: CrewAnswer[];
 }
 
 export type CrewRunStatus = 'planning' | 'awaiting_plan' | 'running' | 'assembling' | 'awaiting_approval' | 'done' | 'failed' | 'cancelled' | 'interrupted';
@@ -88,7 +100,7 @@ export interface CrewEvent {
   /** the agent who did it (none: RealmNest or the user) */
   agentId?: string;
   taskId?: string;
-  kind: 'plan' | 'approve' | 'kickoff' | 'start' | 'handoff' | 'output' | 'review' | 'changes' | 'fail' | 'block' | 'retry' | 'skip' | 'assemble' | 'final' | 'feedback' | 'done' | 'cancel' | 'resume' | 'warning';
+  kind: 'plan' | 'approve' | 'kickoff' | 'start' | 'handoff' | 'output' | 'review' | 'changes' | 'fail' | 'block' | 'retry' | 'skip' | 'assemble' | 'final' | 'feedback' | 'done' | 'cancel' | 'resume' | 'warning' | 'ask' | 'answer';
   /** English, for logs */
   message: string;
   /** what the UI shows, translated: cw.ev.<key> with these values */
@@ -125,6 +137,16 @@ export const CREW_LIMITS = {
   history: 300,
   runs: 40,
 };
+
+/**
+ * An agent that cannot do its task answers "BLOCKED: what I need" (or BLOCCATO) as the first line:
+ * the question, or undefined for an ordinary answer. Only a first line that starts so counts.
+ */
+export function blockedQuestion(text: string): string | undefined {
+  const m = /^\s*\**\s*(?:BLOCKED|BLOCCATO)\s*\**\s*[:：—-]\s*([\s\S]+)/i.exec(text);
+  const q = m?.[1].trim().replace(/\s+/g, ' ').slice(0, 1000);
+  return q || undefined;
+}
 
 export const isLiveCrewRun = (s: CrewRunStatus) => s === 'planning' || s === 'running' || s === 'assembling';
 /** ended for good: only these runs make room for new ones (an open run is never dropped) */

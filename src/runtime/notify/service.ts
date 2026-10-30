@@ -62,7 +62,8 @@ export interface NotifierDeps {
   task: (taskId: string, runId: string) => { title: string; step: boolean } | undefined;
   /** who asks for a tool call, and which tool */
   approval: (callId: string) => { who: string; tool: string } | undefined;
-  crew: (runId: string) => { status: string; name: string; error?: string } | undefined;
+  /** `asking`: the question of a task waiting for the user (BLOCKED), the newest */
+  crew: (runId: string) => { status: string; name: string; error?: string; asking?: string } | undefined;
   workflow: (runId: string) => { status: string; name: string; error?: string } | undefined;
   research: (id: string) => { status: string; question: string; agent?: boolean; error?: string } | undefined;
   /** a click: show what the notification was about */
@@ -129,7 +130,7 @@ export class DesktopNotifier {
       bus.on('agent.run.failed', (p) => this.taskEnded(p.agentId, p.taskId, p.runId, p.error.message)),
       bus.on('tool.awaiting_approval', (p) => queueMicrotask(() => this.toolWaits(p.toolCallId))),
       // a step changes the run first: read it after the emitter is done
-      bus.on('crew.event', (p) => queueMicrotask(() => this.crewChanged(p.runId))),
+      bus.on('crew.event', (p) => queueMicrotask(() => (p.kind === 'ask' ? this.crewAsks(p.runId) : this.crewChanged(p.runId)))),
       bus.on('workflow.event', (p) => queueMicrotask(() => this.workflowChanged(p.runId, p.kind))),
       bus.on('research.status', (p) => this.researchChanged(p.id)),
     );
@@ -168,6 +169,13 @@ export class DesktopNotifier {
     else if (run.status === 'awaiting_approval') this.send('approvals', tag, t('nt.crewFinal', { name: run.name }), t('nt.crewFinalBody'));
     else if (run.status === 'done') this.send('results', tag, t('nt.crewDone', { name: run.name }), '');
     else if (run.status === 'failed') this.send('results', tag, t('nt.crewFailed', { name: run.name }), run.error ?? '');
+  }
+
+  /** an agent of the crew cannot go on without the user (its task waits for an answer) */
+  private crewAsks(runId: string) {
+    const run = this.deps.crew(runId);
+    if (!run?.asking) return;
+    this.send('approvals', `crew:${runId}`, this.deps.t()('nt.crewAsk', { name: run.name }), run.asking);
   }
 
   private workflowChanged(runId: string, kind: string) {

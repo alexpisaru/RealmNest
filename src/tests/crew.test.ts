@@ -44,7 +44,7 @@ class Agents implements AIProvider {
   readonly capabilities = CAPS;
   prompts: { who: string; text: string }[] = [];
   reviews = new Map<string, number>();
-  constructor(private o: { plan?: unknown; fail?: (text: string) => boolean } = {}) {}
+  constructor(private o: { plan?: unknown; fail?: (text: string) => boolean; ask?: (text: string) => string | undefined } = {}) {}
   async getStatus() {
     return { state: 'available' as const, message: 'ok', checkedAt: 0 };
   }
@@ -75,7 +75,7 @@ class Agents implements AIProvider {
     } else if (text.includes('Assemble the final deliverable')) answer = `FINAL by ${who}${text.includes('Their feedback') ? ' (revised)' : ''}`;
     else {
       const id = /Your task \((T\d+)\)/.exec(text)![1];
-      answer = `${id} by ${who}${text.includes('Reviewer\'s notes') ? ' v2' : ''}`;
+      answer = this.o.ask?.(text) ?? `${id} by ${who}${text.includes('Reviewer\'s notes') ? ' v2' : ''}`;
     }
     yield out({ type: 'run.completed', text: answer });
   }
@@ -286,5 +286,58 @@ describe('Crew: hardening', () => {
     expect(crews.runsOf().every((r) => r.status !== 'cancelled')).toBe(true);
     expect(crews.run(next.id)).toBeDefined();
     for (const r of crews.runsOf()) await crews.cancel(r.id);
+  });
+});
+
+describe('Crew v2: an agent asks the user', () => {
+  it('BLOCKED stops that task only, asks the user, and the answer starts it again', async () => {
+    // Priya cannot do T1 without the user's login, until the answer is in her prompt
+    const agents = new Agents({ ask: (text) => (text.includes('Your task (T1)') && !text.includes('A: ') ? 'BLOCKED: I need the login to the ads library.' : undefined) });
+    const { crews, bus } = setup(agents);
+    await crews.init();
+    const asked: string[] = [];
+    bus.on('crew.event', (p) => p.kind === 'ask' && asked.push(p.message));
+    const crew = crews.create(LAUNCH);
+    const run = crews.start(crew.id);
+    await until(() => crews.run(run.id)!.status === 'awaiting_plan');
+    crews.approvePlan(run.id);
+    await until(() => crews.run(run.id)!.plan[0].status === 'needs_input');
+    const r = crews.run(run.id)!;
+    expect(r.plan[0]).toMatchObject({ status: 'needs_input', question: 'I need the login to the ads library.' });
+    expect(r.plan[0].output).toBeUndefined();
+    // the tasks after it wait; the run keeps running and says it waits for the user
+    expect(r.plan.slice(1).map((t) => t.status)).toEqual(['waiting', 'waiting']);
+    expect(r.status).toBe('running');
+    expect(asked).toHaveLength(1);
+    await until(() => r.history.some((h) => h.key === 'needsYou'));
+    expect(() => crews.answerTask(run.id, 'T2', 'x')).toThrow(/not waiting/);
+    expect(() => crews.answerTask(run.id, 'T1', '  ')).toThrow(/answer/);
+    crews.answerTask(run.id, 'T1', 'Use the account ads@example.test');
+    await until(() => crews.run(run.id)!.status === 'awaiting_approval');
+    const done = crews.run(run.id)!;
+    expect(done.plan[0]).toMatchObject({ status: 'done', output: 'T1 by Priya', answers: [{ question: 'I need the login to the ads library.', answer: 'Use the account ads@example.test' }] });
+    // the second attempt carried the question and the answer
+    expect(agents.prompts.filter((p) => p.text.includes('Your task (T1)')).at(-1)!.text).toContain('A: Use the account ads@example.test');
+    // the answer is a fact confirmed by the user for everyone after it: the next task, the reviewer, the coordinator
+    const confirmed = 'facts confirmed by the user';
+    expect(agents.prompts.find((p) => p.text.includes('Your task (T2)'))!.text).toContain(confirmed);
+    expect(agents.prompts.find((p) => p.text.includes('You are the reviewer') && p.text.includes('Task T1'))!.text).toContain('A: Use the account ads@example.test');
+    expect(agents.prompts.find((p) => p.text.includes('Assemble the final deliverable'))!.text).toContain(confirmed);
+    expect(done.history.map((h) => h.key)).toEqual(expect.arrayContaining(['asks', 'youAnswered']));
+  });
+
+  it('a task that needs the user can be skipped; stopping the crew cancels it', async () => {
+    const agents = new Agents({ ask: (text) => (text.includes('Your task (T3)') ? 'BLOCCATO: serve il logo in alta risoluzione' : undefined) });
+    const { crews } = setup(agents);
+    await crews.init();
+    const crew = crews.create(LAUNCH);
+    const run = crews.start(crew.id);
+    await until(() => crews.run(run.id)!.status === 'awaiting_plan');
+    crews.approvePlan(run.id);
+    await until(() => crews.run(run.id)!.plan[2].status === 'needs_input');
+    expect(crews.run(run.id)!.plan[2].question).toBe('serve il logo in alta risoluzione');
+    crews.skipTask(run.id, 'T3');
+    await until(() => crews.run(run.id)!.status === 'awaiting_approval');
+    expect(crews.run(run.id)!.plan[2].status).toBe('skipped');
   });
 });

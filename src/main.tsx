@@ -406,7 +406,8 @@ const notifier = new DesktopNotifier({
   },
   crew: (id) => {
     const r = crews.run(id);
-    return r && { status: r.status, name: r.crew.name, ...(r.error && { error: r.error }) };
+    const asking = r && [...r.plan].reverse().find((x) => x.status === 'needs_input')?.question;
+    return r && { status: r.status, name: r.crew.name, ...(r.error && { error: r.error }), ...(asking && { asking }) };
   },
   workflow: (id) => {
     const r = orchestrator.get(id);

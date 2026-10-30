@@ -7709,6 +7709,44 @@ option {
   background: color-mix(in srgb, #e2553b 16%, transparent);
   color: #e2553b;
 }
+/* an agent waits for the user's answer (BLOCKED) */
+.cw-card.st-needs_input {
+  border-color: var(--warning);
+}
+.cw-st.st-needs_input {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+}
+.cw-ask-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+.cw-ask {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  border-radius: 10px;
+}
+.cw-ask p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.cw-answers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.cw-answers li {
+  display: grid;
+  gap: 2px;
+}
 .cw-drawer,
 .cw-final {
   display: flex;

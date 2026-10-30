@@ -742,6 +742,12 @@ export class TelegramBridge {
   private async crewChanged(runId: string, kind: string, message: string) {
     const run = this.deps.crews.run(runId);
     if (!run) return;
+    // an agent cannot go on without the user (BLOCKED): the paired users hear it, the answer is given in RealmNest
+    if (kind === 'ask') {
+      const asking = [...run.plan].reverse().find((x) => x.status === 'needs_input');
+      if (asking && this.settings.notify.approvals) for (const u of this.users()) await this.say(u.chatId, this.t('tg.crewAsk', { name: esc(run.crew.name), id: asking.id, q: esc(asking.question ?? '') }));
+      return;
+    }
     const before = this.seen.get(runId);
     this.seen.set(runId, run.status);
     const mine = this.started.has(runId);

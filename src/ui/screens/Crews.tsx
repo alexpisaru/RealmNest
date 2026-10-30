@@ -396,6 +396,17 @@ function RunView({ run, onDeleted }: { run: CrewRun; onDeleted: () => void }) {
       {run.status === 'assembling' && <p className="cw-banner">{t('cw.assembling', { name: coord })}</p>}
       {run.error && <p className="chat-error">{run.error}</p>}
       {error && <p className="chat-error">{error}</p>}
+      {run.status === 'running' &&
+        run.plan
+          .filter((x) => x.status === 'needs_input')
+          .map((x) => (
+            <div key={x.id} className="cw-banner cw-ask-banner">
+              <span>{t('cw.ask.banner', { name: people.name(x.assigneeId), id: x.id })}</span>
+              <Button size="sm" tone="primary" onClick={() => setSelected(x.id)}>
+                {t('cw.ask.open')}
+              </Button>
+            </div>
+          ))}
       {editing && (
         <div className="cw-plan-bar">
           <span className="muted small">{t('cw.planHint')}</span>
@@ -590,6 +601,20 @@ function TaskDetails({ run, task, onClose, act }: { run: CrewRun; task: CrewTask
         {task.deliverable && <span className="muted"> · {t('cw.deliverable')}: {task.deliverable}</span>}
       </p>
       {task.error && <p className="chat-error">{task.error}</p>}
+      {task.status === 'needs_input' && <AnswerBox run={run} task={task} act={act} />}
+      {!!task.answers?.length && (
+        <>
+          <h4>{t('cw.answers')}</h4>
+          <ul className="cw-answers">
+            {task.answers.map((a, i) => (
+              <li key={i}>
+                <small className="muted">{a.question}</small>
+                <span>{a.answer}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {canRetry && (task.status === 'failed' || task.status === 'cancelled' || task.status === 'blocked') && (
         <div className="row">
           {task.status !== 'blocked' && (
@@ -629,6 +654,29 @@ function TaskDetails({ run, task, onClose, act }: { run: CrewRun; task: CrewTask
         </>
       )}
     </section>
+  );
+}
+
+/** an agent asked for something it cannot get itself (BLOCKED): the user answers, or skips the task */
+function AnswerBox({ run, task, act }: { run: CrewRun; task: CrewTask; act: (fn: () => unknown) => void }) {
+  const t = useT();
+  const crews = useCrews();
+  const people = usePeople();
+  const [answer, setAnswer] = useState('');
+  return (
+    <div className="cw-ask">
+      <b>{t('cw.ask.title', { name: people.name(task.assigneeId) })}</b>
+      <p>{task.question}</p>
+      <textarea rows={3} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder={t('cw.ask.ph')} aria-label={t('cw.ask.ph')} />
+      <div className="row">
+        <Button size="sm" tone="primary" icon={<Play size={14} />} disabled={!answer.trim()} onClick={() => act(() => (crews.answerTask(run.id, task.id, answer), setAnswer('')))}>
+          {t('cw.ask.send')}
+        </Button>
+        <Button size="sm" tone="ghost" icon={<SkipForward size={14} />} onClick={() => act(() => crews.skipTask(run.id, task.id))}>
+          {t('cw.skip')}
+        </Button>
+      </div>
+    </div>
   );
 }
 

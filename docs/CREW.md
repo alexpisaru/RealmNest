@@ -46,13 +46,17 @@ Brief: the product, the audience, the price, the tone
    - On `changes`, the author redoes the task with the notes and their previous version, and the Reviewer checks it again. After 2 revisions the output is accepted, with the notes kept.
    - A review that does not come back does not hold the crew up: the output stands.
 6. **Failure.** A failed or stopped task shows its error, and the tasks that depend on it become **blocked**. **Retry** runs it again. **Skip** lets the next tasks go on without its output.
-7. **Assemble.** When every task is done or skipped, the Coordinator assembles the final deliverable from all the outputs and the reviewer's notes. It is one Markdown document in the goal's language, kept as an Artifact. The crew meets again, and the run waits: **To approve**.
-8. **Approve the result.** **Approve** ends the run. **Ask for changes** sends the feedback: the Coordinator re-assembles with it and the previous version, and the run comes back to approval.
-9. **Never lose work.** Runs are saved as they go.
+7. **An agent needs the user.** Every task is told: if something only the user can give is missing (an account or access, a file, a decision, a fact it must not guess), do not invent it and do not hand in half: answer with one line `BLOCKED: what I need` (`blockedQuestion` also takes BLOCCATO).
+   - The task becomes **needs you** (`needs_input`, `question`); its output is not kept and it is not reviewed. The tasks after it wait; the other tasks go on. When nothing else can move, the history says the crew waits for the user.
+   - The run view shows a banner per question; the task's drawer has the question, an answer box (**Answer and resume**) and **Skip**. A Windows notification (approvals) and a Telegram message tell the user; the answer is given in RealmNest.
+   - **Answer** (`answerTask`) runs the task again. Every answer is kept on the task (`answers`, the last 5) and becomes a **fact confirmed by the user** for that task, every task built on it, their reviewer and the final assembly: without it, the reviewer took the answered values for invented ones and the next agent asked again (seen on a live run).
+8. **Assemble.** When every task is done or skipped, the Coordinator assembles the final deliverable from all the outputs and the reviewer's notes. It is one Markdown document in the goal's language, kept as an Artifact. The crew meets again, and the run waits: **To approve**.
+9. **Approve the result.** **Approve** ends the run. **Ask for changes** sends the feedback: the Coordinator re-assembles with it and the previous version, and the run comes back to approval.
+10. **Never lose work.** Runs are saved as they go.
    - **Restart.** After a restart a working run is **Interrupted**, and its running tasks wait again. **Resume** continues from there: it plans again if there was no plan yet, re-assembles if every task was done, and otherwise runs the graph on.
    - **Stop.** It stops the agents' crew tasks and marks the open ones cancelled; what is done stays.
 
-**Task states:** waiting · blocked · running · in review · done · failed · cancelled · skipped.
+**Task states:** waiting · blocked · running · in review · needs you · done · failed · cancelled · skipped.
 
 **Run states:** planning · plan to approve · working · assembling · to approve · done · failed · stopped · interrupted.
 

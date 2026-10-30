@@ -12,12 +12,12 @@
 import type { EventBus } from '../../core/events';
 import type { AgentRun, AgentTask } from '../../domain/agent';
 import type { AttachmentInput } from '../../domain/attachment';
-import { CREW_LIMITS, crewRevision, isEndedCrewRun, isLiveCrewRun, topoOrder, type Crew, type CrewEvent, type CrewMember, type CrewRun, type CrewTask } from '../../domain/crew';
+import { blockedQuestion, CREW_LIMITS, crewRevision, isEndedCrewRun, isLiveCrewRun, topoOrder, type Crew, type CrewEvent, type CrewMember, type CrewRun, type CrewTask } from '../../domain/crew';
 import { onFlushAll } from '../../persistence/coalesced';
 import type { StorageAdapter } from '../../persistence/storage';
 import type { LiveRuntime } from '../live/liveRuntime';
 import { parseJsonObject } from '../research/json';
-import { assemblePrompt, PLAN_SYSTEM, planUser, reviewPrompt, taskPrompt } from './prompts';
+import { assemblePrompt, PLAN_SYSTEM, planUser, reviewPrompt, taskPrompt, type UserFact } from './prompts';
 
 const CREWS = 'crews';
 const INDEX = 'crew-runs';
@@ -364,7 +364,11 @@ export class CrewService {
     // reviews waiting for a free reviewer
     for (const t of run.plan) if (t.status === 'review' && !t.attempts.some((a) => a.kind === 'review' && this.pending(a.runId))) this.startReview(run, t);
     if (run.plan.every(settled)) this.assemble(run);
-    else if (run.plan.every((t) => settled(t) || t.status === 'failed' || t.status === 'blocked' || t.status === 'cancelled') && run.plan.some((t) => t.status === 'failed')) this.note(run, 'Some tasks failed: retry or skip them to go on.', ['someFailed', {}]);
+    else if (run.plan.some((t) => t.status === 'needs_input') && !run.plan.some((t) => t.status === 'running' || t.status === 'review' || (t.status === 'waiting' && t.dependsOn.every((d) => settled(byId.get(d)!))))) {
+      // nothing can move until the user answers (what still waits depends on the question)
+      const ids = run.plan.filter((t) => t.status === 'needs_input').map((t) => t.id).join(', ');
+      this.note(run, `The crew waits for your answer (${ids}).`, ['needsYou', { ids }]);
+    } else if (run.plan.every((t) => settled(t) || t.status === 'failed' || t.status === 'blocked' || t.status === 'cancelled') && run.plan.some((t) => t.status === 'failed')) this.note(run, 'Some tasks failed: retry or skip them to go on.', ['someFailed', {}]);
     this.touch(run);
   }
 
@@ -390,7 +394,7 @@ export class CrewService {
       .filter((d) => d.status === 'done' && d.output)
       .map((d) => ({ title: d.title, by: this.nameOf(d.assigneeId), output: d.output!.slice(0, CREW_LIMITS.handoffChars) }));
     const member = run.crew.members.find((m) => m.agentId === t.assigneeId);
-    const prompt = taskPrompt({ crew: run.crew.name, goal: run.goal, role: member?.role ?? 'member', ...(run.crew.brief && { brief: run.crew.brief }), task: t, inputs, ...(kind === 'revision' && t.output && { revision: { notes: notes ?? '', previous: t.output } }) });
+    const prompt = taskPrompt({ crew: run.crew.name, goal: run.goal, role: member?.role ?? 'member', ...(run.crew.brief && { brief: run.crew.brief }), task: t, inputs, ...(kind === 'revision' && t.output && { revision: { notes: notes ?? '', previous: t.output } }), facts: this.factsFor(run, t.id) });
     // in the world: the author of the last input walks over to hand it off
     const from = t.dependsOn.map((d) => byId.get(d)!).filter((d) => d.status === 'done' && d.assigneeId !== t.assigneeId).sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))[0];
     if (kind === 'work' && from && !this.live.activeRun(from.assigneeId)) {
@@ -413,7 +417,7 @@ export class CrewService {
       return;
     }
     if (!t.attempts.some((a) => a.kind === 'review')) this.bus.emit('agent.handoff', { from: t.assigneeId, to: reviewer });
-    const started = this.startAgent(run, reviewer, { kind: 'review', taskId: t.id }, reviewPrompt({ crew: run.crew.name, goal: run.goal, task: t, author: this.nameOf(t.assigneeId), output: t.output ?? '' }), `${run.crew.name} · review ${t.id}`);
+    const started = this.startAgent(run, reviewer, { kind: 'review', taskId: t.id }, reviewPrompt({ crew: run.crew.name, goal: run.goal, task: t, author: this.nameOf(t.assigneeId), output: t.output ?? '', facts: this.factsFor(run, t.id) }), `${run.crew.name} · review ${t.id}`);
     if (!started) return;
     (delete t.note, delete t.noteKey, delete t.noteVars);
     t.attempts.push({ kind: 'review', agentId: reviewer, agentTaskId: started.task.id, runId: started.run.id, at: this.now() });
@@ -432,11 +436,25 @@ export class CrewService {
       return this.touch(run);
     }
     const outputs = run.plan.filter((t) => t.status === 'done').map((t) => ({ id: t.id, title: t.title, by: this.nameOf(t.assigneeId), output: (t.output ?? '').slice(0, CREW_LIMITS.handoffChars), ...(t.reviewNotes && { notes: t.reviewNotes }) }));
-    const started = this.startAgent(run, coord, { kind: 'assemble' }, assemblePrompt({ crew: run.crew.name, goal: run.goal, outputs, ...(feedback && run.final?.text && { feedback: { notes: feedback, previous: run.final.text } }) }), `${run.crew.name} · final`);
+    const started = this.startAgent(run, coord, { kind: 'assemble' }, assemblePrompt({ crew: run.crew.name, goal: run.goal, outputs, ...(feedback && run.final?.text && { feedback: { notes: feedback, previous: run.final.text } }), facts: this.factsFor(run) }), `${run.crew.name} · final`);
     if (!started) return;
     run.final = { ...(run.final ?? { text: '', assembledAt: 0 }), ...(feedback && { feedback }), agentTaskId: started.task.id, runId: started.run.id };
     this.event(run, 'assemble', `${this.nameOf(coord)} assembles the final result.`, coord, undefined, ['assembles', { name: this.nameOf(coord) }]);
     this.touch(run, true);
+  }
+
+  /** what the user answered (BLOCKED) for this task and every task it builds on; no task: the whole run (assembly) */
+  private factsFor(run: CrewRun, taskId?: string): UserFact[] {
+    const byId = new Map(run.plan.map((t) => [t.id, t]));
+    const ids = new Set<string>();
+    const walk = (id: string) => {
+      if (ids.has(id)) return;
+      ids.add(id);
+      for (const d of byId.get(id)?.dependsOn ?? []) walk(d);
+    };
+    if (taskId) walk(taskId);
+    else for (const t of run.plan) ids.add(t.id);
+    return run.plan.filter((t) => ids.has(t.id)).flatMap((t) => (t.answers ?? []).map((a) => ({ task: t.id, question: a.question, answer: a.answer })));
   }
 
   /** one agent task for the crew; undefined (and a warning) when it cannot start */
@@ -532,6 +550,16 @@ export class CrewService {
       t.finishedAt = this.now();
       this.event(run, 'fail', `${t.id} ${t.status === 'cancelled' ? 'was stopped' : `failed: ${t.error}`}.`, t.assigneeId, t.id, t.status === 'cancelled' ? ['stopped', { id: t.id }] : ['failed', { id: t.id, error: t.error ?? '' }]);
       return this.touch(run, true);
+    }
+    // the agent cannot go on without the user: the task waits for an answer, the rest of the crew goes on
+    const question = blockedQuestion(text);
+    if (question) {
+      t.status = 'needs_input';
+      t.question = question;
+      (delete t.note, delete t.noteKey, delete t.noteVars);
+      this.event(run, 'ask', `${this.nameOf(t.assigneeId)} needs your input on ${t.id}: ${question.slice(0, 200)}`, t.assigneeId, t.id, ['asks', { name: this.nameOf(t.assigneeId), id: t.id, question: question.slice(0, 200) }]);
+      this.touch(run, true);
+      return this.pump(run);
     }
     t.output = text.slice(0, CREW_LIMITS.outputChars);
     t.artifactId = (await this.opts.keep?.({ name: `${run.crew.name} ${t.id} ${t.title}.md`, text, runId: run.id, agentId: t.assigneeId, agentRunId: ar.id, agentTaskId: ar.taskId }).catch(() => undefined)) ?? t.artifactId;
@@ -644,10 +672,25 @@ export class CrewService {
     this.event(run, 'retry', `${t.id} will be retried.`, undefined, t.id, ['retried', { id: t.id }]);
     this.pump(run);
   }
+  /** the user answers what an agent asked (needs_input): the task runs again with the answer */
+  answerTask(runId: string, taskId: string, answer: string) {
+    const run = this.require(runId);
+    const t = run.plan.find((x) => x.id === taskId);
+    if (!t || t.status !== 'needs_input') throw new CrewError('This task is not waiting for an answer.');
+    const a = answer.trim();
+    if (!a) throw new CrewError('Write the answer first.');
+    t.answers = [...(t.answers ?? []), { question: t.question ?? '', answer: a.slice(0, 4000), at: this.now() }].slice(-5);
+    delete t.question;
+    t.status = 'waiting';
+    this.event(run, 'answer', `You answered ${t.id}: ${a.slice(0, 160)}`, undefined, t.id, ['youAnswered', { id: t.id, text: a.slice(0, 160) }]);
+    this.touch(run, true);
+    this.pump(run);
+  }
   skipTask(runId: string, taskId: string) {
     const run = this.require(runId);
     const t = run.plan.find((x) => x.id === taskId);
-    if (!t || !(t.status === 'failed' || t.status === 'cancelled' || t.status === 'blocked' || t.status === 'waiting')) throw new CrewError('This task cannot be skipped now.');
+    if (!t || !(t.status === 'failed' || t.status === 'cancelled' || t.status === 'blocked' || t.status === 'waiting' || t.status === 'needs_input')) throw new CrewError('This task cannot be skipped now.');
+    delete t.question;
     t.status = 'skipped';
     (delete t.note, delete t.noteKey, delete t.noteVars);
     this.event(run, 'skip', `${t.id} skipped: the tasks after it go on without its output.`, undefined, t.id, ['skipped', { id: t.id }]);
@@ -664,7 +707,7 @@ export class CrewService {
         const ar = this.live.getRun(agentRunId)!;
         if (this.live.activeRun(ar.agentId)?.id === agentRunId) await this.live.cancel(ar.agentId);
       }
-    for (const t of run.plan) if (t.status === 'waiting' || t.status === 'running' || t.status === 'review' || t.status === 'blocked') t.status = 'cancelled';
+    for (const t of run.plan) if (t.status === 'waiting' || t.status === 'running' || t.status === 'review' || t.status === 'blocked' || t.status === 'needs_input') t.status = 'cancelled';
     this.event(run, 'cancel', 'The crew was stopped; what was done stays.', undefined, undefined, ['stoppedRun', {}]);
     this.touch(run, true);
   }
