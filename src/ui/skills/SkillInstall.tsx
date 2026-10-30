@@ -7,12 +7,12 @@ import { FileUp, FolderUp, Globe, GitBranch, ShieldAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { compareVersions, type ToolRequirement } from '../../domain/skill';
 import type { PackageFile, SkillReview } from '../../runtime/skills/package';
-import type { GithubRepo, GithubSkill } from '../../runtime/skills/github';
+import type { GithubRepo, GithubSkill, ResolvedRef } from '../../runtime/skills/github';
 import { SKILL_LIMITS } from '../../runtime/skills/package';
 import { SkillError } from '../../runtime/skills/service';
 import { useSkills, useT } from '../context';
 import { Button, Modal } from '../kit';
-import { RequirementList, ToolPicker } from './common';
+import { RequirementList, ToolPicker, useGithubLabel, useRefLabel } from './common';
 
 /** read what the user picked (the browser's own picker: the page never names a path) */
 async function readPicked(list: FileList, folder: boolean, t: ReturnType<typeof useT>): Promise<PackageFile[]> {
@@ -28,7 +28,8 @@ export function SkillInstall({ onClose }: { onClose: () => void }) {
   const [review, setReview] = useState<SkillReview | null>(null);
   const [url, setUrl] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
-  const [found, setFound] = useState<{ repo: Required<GithubRepo>; skills: GithubSkill[]; truncated: boolean } | null>(null);
+  const [found, setFound] = useState<{ repo: Required<GithubRepo>; at: ResolvedRef; skills: GithubSkill[]; truncated: boolean } | null>(null);
+  const refLabel = useRefLabel();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -114,7 +115,7 @@ export function SkillInstall({ onClose }: { onClose: () => void }) {
               </div>
               {found && (
                 <>
-                  <small className="muted">{t('skills.gitFound', { n: found.skills.length, repo: `${found.repo.owner}/${found.repo.repo}`, ref: found.repo.ref })}</small>
+                  <small className="muted">{t('skills.gitFound', { n: found.skills.length, repo: `${found.repo.owner}/${found.repo.repo}`, ref: refLabel(found.at.refKind, found.at.ref) })}</small>
                   <ul className="skill-git-list">
                     {found.skills.map((s) => (
                       <li key={s.dir}>
@@ -123,7 +124,7 @@ export function SkillInstall({ onClose }: { onClose: () => void }) {
                           <small className="muted mono">{s.dir || '/'}</small>
                         </span>
                         <small className="muted">{t('skills.gitFiles', { n: s.files.length })}</small>
-                        <Button size="sm" onClick={() => void load(() => skills.githubReview(found.repo, s))} disabled={busy}>
+                        <Button size="sm" onClick={() => void load(() => skills.githubReview(found, s))} disabled={busy}>
                           {t('skills.gitReview')}
                         </Button>
                       </li>
@@ -147,6 +148,8 @@ export function SkillInstall({ onClose }: { onClose: () => void }) {
 
 function SkillReviewView({ review, onBack, onDone }: { review: SkillReview; onBack: () => void; onDone: () => void }) {
   const t = useT();
+  const githubLabel = useGithubLabel();
+  const gh = review.source.github;
   const skills = useSkills();
   const [id, setId] = useState(review.manifest.id);
   const [name, setName] = useState(review.manifest.name);
@@ -200,7 +203,8 @@ function SkillReviewView({ review, onBack, onDone }: { review: SkillReview; onBa
         )}
         <dt>{t('skills.source')}</dt>
         <dd>
-          {review.source.url ?? review.source.label} · {review.format}
+          {gh ? githubLabel(gh) : (review.source.url ?? review.source.label)} · {review.format}
+          {gh && <small className="muted skill-follow">{t(gh.refKind === 'branch' ? 'skills.followsBranch' : gh.refKind === 'tag' ? 'skills.pinnedTag' : 'skills.pinnedCommit')}</small>}
         </dd>
         <dt>{t('skills.hash')}</dt>
         <dd className="mono small">{review.hash.slice(0, 16)}…</dd>

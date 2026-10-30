@@ -95,6 +95,8 @@ export interface EventMap {
   'skill.installed': { skillId: string; version: string; origin: string; replaced: boolean };
   'skill.updated': { skillId: string; version: string };
   'skill.uninstalled': { skillId: string; version: string };
+  /** an update check ended (or an update was installed): Skills with an update, those found just now, whether the daily check did it */
+  'skill.updates': { available: string[]; fresh: { id: string; name: string }[]; auto: boolean };
   'skill.activated': { runId: string; skills: string[]; tools: number };
   // Artifacts (ids and sizes only, never paths or contents; docs/FILES.md)
   'artifact.created': { artifactId: string; kind: string; size: number; runId?: string };

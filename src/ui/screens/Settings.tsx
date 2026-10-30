@@ -208,6 +208,7 @@ function NotifyCard() {
             <>
               <Toggle on={n.approvals} onChange={(approvals) => set({ approvals })} label={t('nt.approvals')} sub={t('nt.approvalsSub')} />
               <Toggle on={n.results} onChange={(results) => set({ results })} label={t('nt.results')} sub={t('nt.resultsSub')} />
+              <Toggle on={n.updates} onChange={(updates) => set({ updates })} label={t('nt.updates')} sub={t('nt.updatesSub')} />
               <div className="row">
                 <Button size="sm" onClick={() => void notifier.test().catch(() => undefined)}>
                   {t('nt.test')}

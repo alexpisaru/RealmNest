@@ -2,16 +2,17 @@
 // as cards (source, version, readiness, who uses them), a detail view with
 // everything a Skill contains, the editor and the installer. No marketplace.
 
-import { BookOpenCheck, Download, Pencil, Plus, Power, ShieldAlert, Trash2, Upload } from 'lucide-react';
+import { BookOpenCheck, Download, Pencil, Plus, Power, RefreshCw, ShieldAlert, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import type { InstalledSkill } from '../../domain/skill';
 import type { TKey } from '../../i18n';
 import { SkillError } from '../../runtime/skills/service';
 import { useApp, useServices, useSkills, useT } from '../context';
 import { Button, Modal, Segmented } from '../kit';
-import { RequirementList, SkillStateBadge, useSkillText } from '../skills/common';
+import { RequirementList, SkillStateBadge, useGithubLabel, useRefLabel, useSkillText } from '../skills/common';
 import { SkillEditor } from '../skills/SkillEditor';
 import { SkillInstall } from '../skills/SkillInstall';
+import { SkillUpdate } from '../skills/SkillUpdate';
 
 type Filter = 'all' | 'imported' | 'created' | 'builtin';
 
@@ -30,15 +31,35 @@ function useAgents() {
   };
 }
 
+type Skills = ReturnType<typeof useSkills>;
+type T = ReturnType<typeof useT>;
+
+/** check all GitHub Skills (or one) and say what came out */
+async function checkAll(skills: Skills, t: T, store: ReturnType<typeof useServices>['store'], ids?: string[]) {
+  const r = await skills.checkUpdates(ids).catch((e: Error) => (store.toast(e.message), undefined));
+  if (!r) return;
+  if (r.failed) store.toast(t('skills.upd.someFailed', { n: r.failed }));
+  else if (ids) {
+    const s = skills.get(ids[0]);
+    store.toast(s?.update?.available ? t('skills.upd.foundOne') : s?.source.github?.refKind === 'commit' ? t('skills.upd.pinnedNone') : t('skills.upd.upToDateOne'));
+  } else store.toast(r.available ? t('skills.upd.found', { n: r.available }) : t('skills.upd.upToDate'));
+}
+
 export function SkillsScreen() {
   const t = useT();
   const skills = useSkills();
+  const { store } = useServices();
   const agents = useAgents();
   const text = useSkillText();
   const [filter, setFilter] = useState<Filter>('all');
   const [open, setOpen] = useState<string | null>(null);
   const [installing, setInstalling] = useState(false);
   const [editing, setEditing] = useState<InstalledSkill | 'new' | null>(null);
+  const [updating, setUpdating] = useState<string | null>(null);
+  const githubLabel = useGithubLabel();
+  const fromGithub = skills.githubSkills().length > 0;
+  const upd = skills.updateSettings();
+  const pending = skills.withUpdates().length;
   const list = skills.list().filter((s) => filter === 'all' || (filter === 'imported' && s.origin === 'imported') || (filter === 'created' && s.origin === 'user_created') || (filter === 'builtin' && s.origin === 'built_in'));
   const shown = open ? skills.get(open) : undefined;
 
@@ -50,6 +71,11 @@ export function SkillsScreen() {
           <p className="muted">{t('skills.sub')}</p>
         </div>
         <div className="row">
+          {fromGithub && (
+            <Button icon={<RefreshCw size={14} className={skills.checkingUpdates() ? 'spin' : undefined} />} disabled={skills.checkingUpdates()} onClick={() => void checkAll(skills, t, store)}>
+              {skills.checkingUpdates() ? t('skills.upd.checking') : t('skills.upd.checkAll')}
+            </Button>
+          )}
           <Button icon={<Upload size={14} />} onClick={() => setInstalling(true)}>
             {t('skills.install')}
           </Button>
@@ -58,6 +84,17 @@ export function SkillsScreen() {
           </Button>
         </div>
       </header>
+      {fromGithub && (
+        <div className="skill-upd-bar small">
+          <span className="muted">
+            {pending ? t('skills.upd.pending', { n: pending }) : upd.lastCheck ? t('skills.upd.lastCheck', { when: new Date(upd.lastCheck).toLocaleString() }) : t('skills.upd.never')}
+          </span>
+          <label className="tool-check">
+            <input type="checkbox" checked={upd.auto} onChange={(e) => void skills.setAutoCheck(e.target.checked)} />
+            {t('skills.upd.auto')}
+          </label>
+        </div>
+      )}
       <Segmented
         value={filter}
         onChange={setFilter}
@@ -88,8 +125,13 @@ export function SkillsScreen() {
               <p>{text(s, 'description')}</p>
               <div className="skill-meta">
                 <span className={`skill-origin ${s.origin}`}>{t(`skills.origin.${s.origin}` as TKey)}</span>
-                {s.origin === 'imported' && <span>{s.source.url ?? s.source.label}</span>}
+                {s.origin === 'imported' && <span>{s.source.github ? githubLabel(s.source.github) : (s.source.url ?? s.source.label)}</span>}
                 {s.modified && <span>{t('skills.modified')}</span>}
+                {s.update?.available && (
+                  <button className="skill-upd-chip" onClick={() => setUpdating(s.manifest.id)}>
+                    {s.update.available.kind === 'tag' ? t('skills.upd.newTag', { tag: s.update.available.tag }) : t('skills.upd.available')}
+                  </button>
+                )}
                 <span>{using.length ? t('skills.assigned', { names: using.join(', ') }) : t('skills.assignedNone')}</span>
               </div>
               <div className="row">
@@ -101,19 +143,25 @@ export function SkillsScreen() {
           );
         })}
       </div>
-      {shown && <SkillDetail skill={shown} onClose={() => setOpen(null)} onEdit={() => (setOpen(null), setEditing(shown))} />}
+      {shown && <SkillDetail skill={shown} onClose={() => setOpen(null)} onEdit={() => (setOpen(null), setEditing(shown))} onUpdate={() => (setOpen(null), setUpdating(shown.manifest.id))} />}
+      {updating && <SkillUpdate id={updating} onClose={() => setUpdating(null)} />}
       {installing && <SkillInstall onClose={() => setInstalling(false)} />}
       {editing && <SkillEditor skill={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
     </div>
   );
 }
 
-function SkillDetail({ skill, onClose, onEdit }: { skill: InstalledSkill; onClose: () => void; onEdit: () => void }) {
+function SkillDetail({ skill, onClose, onEdit, onUpdate }: { skill: InstalledSkill; onClose: () => void; onEdit: () => void; onUpdate: () => void }) {
   const t = useT();
   const skills = useSkills();
   const { store } = useServices();
   const agents = useAgents();
   const text = useSkillText();
+  const githubLabel = useGithubLabel();
+  const refLabel = useRefLabel();
+  const gh = skill.source.github;
+  const tracked = skills.githubSkills().includes(skill);
+  const u = skill.update;
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState('');
   const m = skill.manifest;
@@ -158,7 +206,7 @@ function SkillDetail({ skill, onClose, onEdit }: { skill: InstalledSkill; onClos
             <dt>{t('skills.source')}</dt>
             <dd>
               {t(`skills.origin.${skill.origin}` as TKey)}
-              {skill.origin === 'imported' && ` · ${skill.source.url ?? skill.source.label} · ${skill.source.format}`}
+              {skill.origin === 'imported' && ` · ${gh ? githubLabel(gh) : (skill.source.url ?? skill.source.label)} · ${skill.source.format}`}
               {skill.modified && ` · ${t('skills.modified')}`}
             </dd>
             {m.author && (
@@ -187,6 +235,38 @@ function SkillDetail({ skill, onClose, onEdit }: { skill: InstalledSkill; onClos
             )}
           </dl>
         </section>
+        {tracked && (
+          <section className="skill-upd-status">
+            <h4>{t('skills.upd.section')}</h4>
+            <p className="small">
+              {gh?.refKind === 'commit'
+                ? t('skills.pinnedCommit')
+                : gh?.refKind === 'tag'
+                  ? t('skills.pinnedTag')
+                  : gh
+                    ? t('skills.followsBranch')
+                    : t('skills.upd.legacy')}
+            </p>
+            <p className="small">
+              {u?.available ? (
+                <b className="skill-upd-yes">{u.available.kind === 'tag' ? t('skills.upd.newTag', { tag: u.available.tag }) : t('skills.upd.availableN', { n: u.available.commits.length + (u.available.more ? '+' : '') })}</b>
+              ) : u?.checkedAt && !u.error ? (
+                <span className="muted">{t('skills.upd.upToDateAt', { when: new Date(u.checkedAt).toLocaleString() })}</span>
+              ) : null}
+              {u?.error && <span className="chat-error"> {u.error}</span>}
+            </p>
+            <div className="row">
+              <Button size="sm" icon={<RefreshCw size={13} className={skills.checkingUpdates() ? 'spin' : undefined} />} disabled={skills.checkingUpdates()} onClick={() => void checkAll(skills, t, store, [skill.manifest.id])}>
+                {t('skills.upd.checkOne')}
+              </Button>
+              {u?.available && gh && (
+                <Button size="sm" tone="primary" onClick={onUpdate}>
+                  {u.available.kind === 'tag' ? t('skills.upd.reviewTag', { ref: refLabel('tag', u.available.tag) }) : t('skills.upd.review')}
+                </Button>
+              )}
+            </div>
+          </section>
+        )}
         <section>
           <h4>{t('skills.requirements')}</h4>
           <RequirementList items={resolution.items} />

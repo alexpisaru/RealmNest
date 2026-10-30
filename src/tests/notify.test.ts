@@ -105,7 +105,7 @@ describe('Windows notifications', () => {
     expect(r.shown).toHaveLength(3);
     const again = rig({ storage: r.storage });
     await again.n.init();
-    expect(again.n.settings()).toEqual({ enabled: true, approvals: true, results: false });
+    expect(again.n.settings()).toEqual({ enabled: true, approvals: true, results: false, updates: true });
   });
 
   it('an agent\'s own research is a step of its task; the same notice twice in a few seconds shows once', async () => {

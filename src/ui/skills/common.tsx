@@ -3,7 +3,7 @@
 
 import { AlertTriangle, CheckCircle2, CircleSlash, XCircle } from 'lucide-react';
 import { CAPABILITY_IDS, type CapabilityId } from '../../domain/capability';
-import { requirementLabel, type InstalledSkill, type SkillReadiness, type ToolRequirement } from '../../domain/skill';
+import { requirementLabel, type InstalledSkill, type SkillGithubSource, type SkillReadiness, type ToolRequirement } from '../../domain/skill';
 import type { TKey } from '../../i18n';
 import type { RequirementStatus } from '../../runtime/skills/resolver';
 import { groupTools } from '../tools/ToolSettings';
@@ -29,6 +29,18 @@ export function useSkillText() {
     const v = s.origin === 'built_in' ? t(key as TKey) : key;
     return v === key ? s.manifest[field] : v;
   };
+}
+
+/** "branch main", "tag v1.2.0", "commit 1a2b3c4" */
+export function useRefLabel() {
+  const t = useT();
+  return (kind: SkillGithubSource['refKind'], ref: string) => t(`skills.ref.${kind}` as TKey, { ref: kind === 'commit' ? ref.slice(0, 7) : ref });
+}
+
+/** where a GitHub Skill came from: repo, what it follows, folder, commit */
+export function useGithubLabel() {
+  const ref = useRefLabel();
+  return (g: SkillGithubSource) => [`${g.owner}/${g.repo}`, ref(g.refKind, g.ref), g.dir || '/', g.refKind !== 'commit' && g.commit ? `@ ${g.commit.slice(0, 7)}` : ''].filter(Boolean).join(' · ');
 }
 
 /** "PhotoCraft › doc_open" for an MCP tool id, the id otherwise */

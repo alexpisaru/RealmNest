@@ -8,6 +8,7 @@ import { reviewPackage } from '../runtime/skills/package';
 // configuration of online MCP servers.
 
 const enc = (s: string) => new TextEncoder().encode(s);
+const HEAD = 'c0ffee'.padEnd(40, '0');
 
 describe('Skills from GitHub', () => {
   it('reads repository, folder and file addresses', () => {
@@ -34,10 +35,12 @@ describe('Skills from GitHub', () => {
     };
     const files: Record<string, string> = {
       'https://api.github.com/repos/acme/skills': JSON.stringify({ default_branch: 'main' }),
-      'https://api.github.com/repos/acme/skills/git/trees/main?recursive=1': JSON.stringify(tree),
-      'https://raw.githubusercontent.com/acme/skills/main/skills/pdf/SKILL.md': '---\nname: pdf\ndescription: Work with PDF files\n---\n# PDF\n\nRead and fill PDF forms.\n',
-      'https://raw.githubusercontent.com/acme/skills/main/skills/pdf/reference.md': '# Reference\n',
-      'https://raw.githubusercontent.com/acme/skills/main/skills/pdf/logo.png': 'PNG',
+      'https://api.github.com/repos/acme/skills/git/ref/heads/main': JSON.stringify({ object: { sha: HEAD } }),
+      'https://api.github.com/repos/acme/skills/commits/main': JSON.stringify({ sha: HEAD }),
+      [`https://api.github.com/repos/acme/skills/git/trees/${HEAD}?recursive=1`]: JSON.stringify(tree),
+      [`https://raw.githubusercontent.com/acme/skills/${HEAD}/skills/pdf/SKILL.md`]: '---\nname: pdf\ndescription: Work with PDF files\n---\n# PDF\n\nRead and fill PDF forms.\n',
+      [`https://raw.githubusercontent.com/acme/skills/${HEAD}/skills/pdf/reference.md`]: '# Reference\n',
+      [`https://raw.githubusercontent.com/acme/skills/${HEAD}/skills/pdf/logo.png`]: 'PNG',
     };
     const asked: string[] = [];
     const fetch = async (url: string) => {
@@ -47,12 +50,14 @@ describe('Skills from GitHub', () => {
     };
     const r = await listGithubSkills(fetch, parseGithubUrl('https://github.com/acme/skills')!);
     expect(r.repo.ref).toBe('main');
+    // the branch is read at one commit: every file comes from it, even if the branch moves meanwhile
+    expect(r.at).toEqual({ ref: 'main', refKind: 'branch', commit: HEAD });
     expect(r.skills.map((s) => [s.name, s.dir, s.files.map((f) => f.path), s.skipped])).toEqual([
       ['brand', 'skills/brand', ['skills/brand/SKILL.md'], 1],
       ['pdf', 'skills/pdf', ['skills/pdf/SKILL.md', 'skills/pdf/reference.md', 'skills/pdf/logo.png'], 1],
     ]);
     const pdf = r.skills.find((s) => s.name === 'pdf')!;
-    const got = await downloadGithubSkill(fetch, r.repo, pdf);
+    const got = await downloadGithubSkill(fetch, r.repo, pdf, r.at.commit);
     expect(got.map((f) => f.path)).toEqual(['pdf/SKILL.md', 'pdf/reference.md', 'pdf/logo.png']);
     expect(asked.some((u) => u.includes('scripts'))).toBe(false);
     const review = await reviewPackage(got, { kind: 'git', label: 'acme/skills/skills/pdf' });

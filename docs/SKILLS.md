@@ -241,13 +241,29 @@ An explicit or assigned Skill that cannot run refuses the run before any provide
   - the user must choose **Replace**; nothing is silently overwritten;
   - a modified import or a user-created Skill gets an explicit warning;
   - built-in Skills cannot be replaced.
-- **Versions:** `installedVersion` is in the manifest. `availableVersion` is a field for a later update check; nothing checks online yet.
+- **Versions:** the installed version is in the manifest. Skills installed from GitHub can be updated (see **Updates** below).
 - **Uninstall** deletes the package and the index entry. Agents, tasks and run history stay, and runs keep their Skill snapshot (shown in the agent's earlier tasks, e.g. "· Inspect Image 1.0.0").
 - **Built-in** Skills ship with the build (Workspace Note): they can be disabled, not changed or uninstalled.
 
 ## From GitHub
 
 Install Skill › **From GitHub**: the address of a public repository (or one of its folders, or a SKILL.md in it). RealmNest asks GitHub for the repository's file list (`api.github.com`, default branch when the address names none), shows every folder that has a SKILL.md, and for the one the user picks downloads only the files a Skill may contain (text and images; never `scripts/`, executables or other types) from `raw.githubusercontent.com`, through the same native download as *From URL* (https, public addresses, size limits). The files are then reviewed exactly like a picked folder. Tested on the release with `https://github.com/anthropics/skills` (20 Skills found, `pdf` reviewed).
+
+The ref is resolved first (`resolveRef`: a branch, a tag or a commit, and the commit it points at now), and the tree and every file are read at that commit, so a branch that moves during the download cannot mix two versions. The review and the installed Skill keep where it came from (`SkillSource.github`): owner, repo, ref and its kind, the folder, the commit, and for a branch the folder's newest commit (`dirCommit`). The review says what that means: *follows the branch* or *pinned to a tag / commit*.
+
+## Updates (GitHub Skills)
+
+- **What is checked.** Only Skills installed from GitHub. A **branch** → the newest commit that changed the Skill's folder (`/commits?sha=<branch>&path=<folder>`, one request) against `dirCommit`: commits elsewhere in the repo are not updates. A **tag** is pinned: it never updates by itself; a newer *version* tag (`v1.2.0` > `v1.1.0`; other tags are ignored) is reported and can be installed the same way. A **commit** is pinned: nothing is asked.
+- **When.** **Check for updates** on the Skills screen (all) and in a Skill's details (that one). Automatically at most once a day (`UPDATE_EVERY_MS`): a few minutes after start, then hourly ticks that check only when 24 hours have passed since the last full check; **Check once a day** turns it off; never in safe mode or the browser build. A check downloads nothing and changes nothing but the Skill's `update` state (`checkedAt`, `available`, `error`).
+- **Shown.** A chip on the Skill's card (*Update available* / *New tag*), the count next to **Skills** in the sidebar, and a Windows notification when a check finds a new commit or tag (once per commit or tag; Settings › Windows notifications › *Skill updates*). GitHub's limit for requests without an account (60 an hour) and missing repos are said in words; the error stays on the Skill.
+- **Before installing** (`prepareUpdate`): the new version is downloaded and reviewed like a new install, then compared with the installed one:
+  - **what it may use**, first and highlighted: capabilities, required and optional tools, MCP tools, network and file access (from the tool names, `toolArea`), declared permissions, conflicts, and the other product's `allowed-tools` (kept as `declaredTools`), each *added* or *dropped*. A Skill still grants nothing: the agent's own tools decide;
+  - the commits that changed the folder since the installed one (first line of each message, up to 10, *more* when there are others);
+  - the files: SKILL.md by its instructions, the others by content, with lines added and removed;
+  - **local changes**: the Skill was edited in RealmNest (`modified`) or its stored files no longer match `storeHash` (changed outside RealmNest). Then the update needs a second yes (*Replace my changes*).
+- **Installing** (`applyUpdate`) only on the user's yes, never silently. It is atomic: the native store writes the new folder aside and swaps it in (the old one comes back if the swap fails), and if the index cannot be saved the old files are written back; on any failure the installed version stays and the downloaded update can be tried again. The Skill keeps its id, its on/off state and the agents it is assigned to; a package without a RealmNest manifest keeps the requirements the user mapped at install.
+- **Installed before RealmNest kept the commit** (0.13.0 and older: a `git` source with its address, no commit): the first check resolves the address and, on a branch, compares the files on GitHub with the installed ones (`packageHash`); equal → it follows the folder from there; different → an update is offered.
+- No automatic installs in V1.
 
 ## Sources and the future gallery
 
@@ -258,7 +274,7 @@ Every way of getting a Skill produces the same thing: package files plus a `Skil
 | local file (SKILL.md, `.nestra-skill`) | done |
 | local folder (RealmNest package, Agent Skills folder) | done |
 | URL (https, one file) | done |
-| Git repository | not yet (clone or download, then install from the folder) |
+| GitHub repository (public) | done, with updates |
 | registry / gallery | not built. It will be one more source, with the same review. The source metadata already has `registryId`, `publisher`, `repository` and `homepage`; a signature can be added next to the hash. |
 
 No catalogue is hardcoded in the Skill domain.
@@ -301,7 +317,7 @@ A Skill sees the memories given to the run as runtime context, and only the run'
 ## Limitations and next steps
 
 - Git and registry sources; zip archives (only folders, single files and `.nestra-skill`).
-- No update check (`availableVersion` is ready); no signatures (the hash is ready).
+- Updates only for Skills from GitHub (public repos, no account); no signatures (the hash is ready).
 - **Conflicts** are declared ones only: RealmNest does not detect contradictory instructions by itself.
 - At most 3 active Skills, a 14k-character context budget and 32 tools per turn.
 - **Claude Code sessions** keep the system prompt of their first turn: a Skill mentioned later is sent inside the message, and the catalog the model saw is the one from the session's start.

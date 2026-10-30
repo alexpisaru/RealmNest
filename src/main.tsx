@@ -425,6 +425,7 @@ const notifier = new DesktopNotifier({
     if (kind === 'crew') store.openCrew({ runId: id });
     else if (kind === 'wf') store.openWorkflow({ runId: id, tab: 'runs' });
     else if (kind === 'research') store.openResearch({ id });
+    else if (kind === 'skills') store.navigate('skills');
     else if (kind === 'agent') {
       const c = store.getState().characters.find((x) => x.id === id);
       if (c) (store.setWorld(c.worldId), store.navigate('simulation'));
@@ -505,6 +506,8 @@ step('connections', () => connections.init())
     // network, so the window does not wait for it (I-4)
     if (!safe) void step('telegram', () => telegram.init());
     void step('updates', () => updates.init());
+    // Skills from GitHub: looked at once a day (docs/SKILLS.md › Updates); never in safe mode
+    if (!safe) skills.startAutoCheck();
     sessions.start();
     // music, the worlds' ambience and effects, all synthesised (docs/AUDIO.md)
     wireAudio(new AudioEngine(), store, bus);

@@ -1,11 +1,12 @@
 # Windows notifications
 
-While RealmNest is in the background (minimized, or another window has the focus), two kinds of things show as a Windows notification under RealmNest's name and icon:
+While RealmNest is in the background (minimized, or another window has the focus), three kinds of things show as a Windows notification under RealmNest's name and icon:
 
 | kind | when |
 | --- | --- |
 | **approvals** | a tool call waits for your approval; a crew's plan or final result waits; a workflow's approval step waits; a deep research plan waits |
 | **results** | an agent's task ends (done or failed); a crew, a workflow or a deep research ends (done or failed) |
+| **updates** | an update check found a new version of a Skill installed from GitHub (each new commit or tag once); a click opens Skills |
 
 A click on the notification brings the window back on what it was about: the crew run, the workflow run, the research, the agent's world. An approval prompt shows wherever you are.
 

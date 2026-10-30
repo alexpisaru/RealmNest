@@ -6581,6 +6581,131 @@ option {
   min-width: 0;
 }
 
+/* Skill updates (docs/SKILLS.md › Updates) */
+.skill-follow {
+  display: block;
+  margin-top: 2px;
+}
+.skill-upd-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+}
+.skill-upd-chip {
+  padding: 1px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+.skill-upd-yes {
+  color: var(--accent);
+}
+.skill-upd-status p {
+  margin: 0 0 6px;
+}
+.skill-update {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.skill-upd-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.skill-upd-sensitive {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+.skill-upd-sensitive b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning-text);
+}
+.skill-upd-sensitive ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.skill-upd-sensitive li.removed {
+  color: var(--muted);
+}
+.skill-upd-area {
+  display: inline-block;
+  min-width: 82px;
+  margin-right: 6px;
+  font-size: var(--fs-meta);
+  color: var(--warning-text);
+}
+.skill-upd-commits,
+.skill-upd-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow: auto;
+}
+.skill-upd-commits li,
+.skill-upd-files li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+}
+.skill-upd-commits li > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skill-upd-change {
+  flex: none;
+  min-width: 64px;
+  font-size: var(--fs-meta);
+  color: var(--muted);
+}
+.skill-upd-change.added,
+.skill-upd-files .plus {
+  color: var(--success-text);
+}
+.skill-upd-change.removed,
+.skill-upd-files .minus {
+  color: var(--danger-text);
+}
+.skill-upd-local {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: var(--r-sm);
+  color: var(--danger-text);
+}
+.skill-upd-local > span {
+  flex: 1 1 100%;
+}
+
 /* ── Deep Research (docs/DEEP_RESEARCH.md) ─────────────────── */
 
 .research-screen {

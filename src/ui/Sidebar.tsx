@@ -2,7 +2,7 @@ import { BookMarked, BookOpenCheck, Brain, ChartColumn, Globe, House, Layers, Me
 import type { TKey } from '../i18n';
 import { exitApp } from '../platform';
 import type { Screen } from '../store/appStore';
-import { useApp, useOrchestrator, useScheduler, useServices, useT } from './context';
+import { useApp, useOrchestrator, useScheduler, useServices, useSkills, useT } from './context';
 import { Logo } from './kit';
 import { Avatar } from './profile';
 import { useMediaQuery } from './shared';
@@ -37,6 +37,8 @@ export function Sidebar({ compact: wanted }: { compact?: boolean }) {
   const orchestrator = useOrchestrator();
   const scheduler = useScheduler();
   const todo = orchestrator.inbox().length + scheduler.missedUnseen().length;
+  // Skills from GitHub with an update waiting
+  const skillUpdates = useSkills().withUpdates().length;
   const item = (id: Screen, Icon: typeof House, key: TKey) => (
     <button key={id} className={`nav-item ${st.screen === id ? 'on' : ''}`} onClick={() => store.navigate(id)} aria-label={t(key)} aria-current={st.screen === id ? 'page' : undefined}>
       <Icon size={19} strokeWidth={1.8} />
@@ -44,6 +46,11 @@ export function Sidebar({ compact: wanted }: { compact?: boolean }) {
       {id === 'workflows' && todo > 0 && (
         <span className="nav-badge" title={t('wf.badge', { n: String(todo) })}>
           {todo > 99 ? '99+' : todo}
+        </span>
+      )}
+      {id === 'skills' && skillUpdates > 0 && (
+        <span className="nav-badge" title={t('skills.upd.badge', { n: skillUpdates })}>
+          {skillUpdates}
         </span>
       )}
     </button>

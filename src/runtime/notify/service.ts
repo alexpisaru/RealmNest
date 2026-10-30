@@ -16,9 +16,11 @@ export interface NotifySettings {
   approvals: boolean;
   /** a task, crew, workflow or research ended (done or failed) */
   results: boolean;
+  /** the daily check found updates for Skills installed from GitHub */
+  updates: boolean;
 }
 
-export const DEFAULT_NOTIFY: NotifySettings = { enabled: true, approvals: true, results: true };
+export const DEFAULT_NOTIFY: NotifySettings = { enabled: true, approvals: true, results: true, updates: true };
 
 const KEY = 'notifications';
 
@@ -133,6 +135,7 @@ export class DesktopNotifier {
       bus.on('crew.event', (p) => queueMicrotask(() => (p.kind === 'ask' ? this.crewAsks(p.runId) : this.crewChanged(p.runId)))),
       bus.on('workflow.event', (p) => queueMicrotask(() => this.workflowChanged(p.runId, p.kind))),
       bus.on('research.status', (p) => this.researchChanged(p.id)),
+      bus.on('skill.updates', (p) => this.skillUpdates(p.fresh)),
     );
   }
 
@@ -206,7 +209,15 @@ export class DesktopNotifier {
     else if (r.status === 'failed') this.send('results', tag, t('nt.researchFailed'), r.error ? `${r.question}: ${r.error}` : r.question);
   }
 
-  private send(kind: 'approvals' | 'results', tag: string, title: string, body: string) {
+  /** updates found just now (each new commit or tag once): the Skills screen has the rest */
+  private skillUpdates(fresh: { id: string; name: string }[]) {
+    if (!fresh.length) return;
+    const t = this.deps.t();
+    const names = fresh.map((s) => s.name);
+    this.send('updates', 'skills:updates', t('nt.skillUpdates', { n: fresh.length }), names.length > 3 ? `${names.slice(0, 3).join(', ')}…` : names.join(', '));
+  }
+
+  private send(kind: 'approvals' | 'results' | 'updates', tag: string, title: string, body: string) {
     if (!this.deps.transport.available || !this.state.enabled || !this.state[kind] || this.deps.focused?.()) return;
     // the same notice twice in a few seconds (a run that flips back and forth) is shown once
     const now = this.deps.now?.() ?? Date.now();
@@ -220,6 +231,6 @@ export class DesktopNotifier {
 
 function pickBooleans(s: Partial<NotifySettings>): Partial<NotifySettings> {
   const out: Partial<NotifySettings> = {};
-  for (const k of ['enabled', 'approvals', 'results'] as const) if (typeof s[k] === 'boolean') out[k] = s[k];
+  for (const k of ['enabled', 'approvals', 'results', 'updates'] as const) if (typeof s[k] === 'boolean') out[k] = s[k];
   return out;
 }

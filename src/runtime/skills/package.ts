@@ -183,7 +183,24 @@ export function normalizeVersion(v: unknown): string | undefined {
 
 const str = (v: unknown, max = 1_000): string | undefined => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined);
 const strList = (v: unknown, max = 50): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x.trim()).slice(0, max).map((x) => x.trim()) : typeof v === 'string' && v.trim() ? v.trim().split(/\s+/).slice(0, max) : [];
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x.trim()).slice(0, max).map((x) => x.trim()) : typeof v === 'string' && v.trim() ? splitList(v).slice(0, max) : [];
+
+/** "Read Grep", "Read, Grep" or "Bash(git log:*), Read": spaces and commas separate, not inside brackets */
+function splitList(s: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let depth = 0;
+  for (const ch of s) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth = Math.max(0, depth - 1);
+    if (depth === 0 && (ch === ',' || /\s/.test(ch))) {
+      if (cur) out.push(cur);
+      cur = '';
+    } else cur += ch;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
 
 function toolRequirement(v: unknown): ToolRequirement | undefined {
   if (typeof v === 'string' && v.trim()) return v.trim();

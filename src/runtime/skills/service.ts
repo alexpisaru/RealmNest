@@ -13,7 +13,7 @@
 
 import type { SkillCatalogEntry } from './mentions';
 import type { EventBus } from '../../core/events';
-import { isSkillId, SEMVER, SKILL_SCHEMA_VERSION, type InstalledSkill, type SkillErrorCode, type SkillManifest, type SkillReadiness, type SkillRunRef, type SkillSource, type ToolRequirement } from '../../domain/skill';
+import { isSkillId, SEMVER, SKILL_SCHEMA_VERSION, type InstalledSkill, type SkillErrorCode, type SkillGithubSource, type SkillManifest, type SkillReadiness, type SkillRunRef, type SkillSource, type SkillUpdateState, type ToolRequirement } from '../../domain/skill';
 import type { CapabilityId } from '../../domain/capability';
 import type { StorageAdapter } from '../../persistence/storage';
 import type { ToolRegistry } from '../tools/registry';
@@ -21,8 +21,9 @@ import { MAX_OFFERED_TOOLS } from '../tools/service';
 import { BUILT_IN_SKILLS } from './builtin';
 import { exportBundle, packageFiles, packageHash, reviewPackage, textOf, type PackageFile, type SkillReview, isBundleName } from './package';
 import { SkillDependencyResolver, type ResolveContext, type ResolverDeps, type SkillResolution } from './resolver';
-import { downloadGithubSkill, listGithubSkills, parseGithubUrl, type GithubRepo, type GithubSkill } from './github';
+import { downloadGithubSkill, folderCommits, githubError, listGithubSkills, newerTag, parseGithubUrl, resolveRef, type GithubRepo, type GithubSkill, type ResolvedRef } from './github';
 import type { SkillStore } from './store';
+import { fileChanges, sensitiveChanges, type SkillUpdatePlan } from './updates';
 
 const KEY = 'skills';
 /** Skills active in one run */
@@ -32,6 +33,14 @@ export const SKILL_CONTEXT_BUDGET = 14_000;
 const EXAMPLE_BUDGET = 2_000;
 /** the read-only tool for Skill resources */
 export const SKILL_RESOURCE_TOOL = 'read_skill_resource';
+/** GitHub Skills are checked at most once a day by themselves */
+export const UPDATE_EVERY_MS = 24 * 60 * 60_000;
+
+/** the automatic update check (GitHub Skills) */
+export interface SkillUpdateSettings {
+  auto: boolean;
+  lastCheck: number;
+}
 
 export class SkillError extends Error {
   constructor(
@@ -81,6 +90,8 @@ export interface InstallOptions {
   replace?: boolean;
   /** what the user mapped on the review screen for a non-RealmNest package */
   overrides?: Partial<Pick<SkillManifest, 'id' | 'name' | 'version' | 'requiresCapabilities' | 'requiresTools' | 'optionalTools' | 'tags'>>;
+  /** an update keeps the Skill on or off as it was */
+  enabled?: boolean;
 }
 
 const slug = (s: string) =>
@@ -95,6 +106,10 @@ export class SkillService {
   private skills: InstalledSkill[] = [];
   private listeners = new Set<() => void>();
   private version = 0;
+  private updates: SkillUpdateSettings = { auto: true, lastCheck: 0 };
+  /** downloaded updates waiting for the user's yes (never installed without it) */
+  private plans = new Map<string, { plan: SkillUpdatePlan; review: SkillReview; overrides: InstallOptions['overrides'] }>();
+  private checking?: Promise<{ checked: number; available: number; failed: number }>;
   readonly resolver: SkillDependencyResolver;
 
   constructor(
@@ -142,7 +157,8 @@ export class SkillService {
   }
 
   async init() {
-    const raw = await this.storage.get<{ skills?: InstalledSkill[] }>(KEY);
+    const raw = await this.storage.get<{ skills?: InstalledSkill[]; updates?: Partial<SkillUpdateSettings> }>(KEY);
+    this.updates = { auto: raw?.updates?.auto !== false, lastCheck: Number(raw?.updates?.lastCheck) || 0 };
     const stored = Array.isArray(raw?.skills) ? raw.skills.filter((s) => s?.manifest && isSkillId(s.manifest.id) && typeof s.instructions === 'string') : [];
     // built-ins always match this build; only their on/off state is the user's
     const t = this.now();
@@ -200,17 +216,29 @@ export class SkillService {
   async githubList(url: string) {
     const repo = parseGithubUrl(url);
     if (!repo) throw new SkillError('SKILL_NOT_FOUND', 'Paste the address of a GitHub repository, e.g. https://github.com/anthropics/skills');
-    const r = await listGithubSkills((u) => this.store.fetch(u), repo);
+    const r = await listGithubSkills(this.fetcher(), repo).catch((e) => Promise.reject(githubError(e)));
     if (!r.skills.length) throw new SkillError('SKILL_NOT_FOUND', 'No folder with a SKILL.md was found there.');
     return r;
   }
 
-  /** download one Skill of a repository and review it like a picked folder */
-  async githubReview(repo: Required<GithubRepo>, skill: GithubSkill): Promise<SkillReview> {
-    const files = await downloadGithubSkill((u) => this.store.fetch(u), repo, skill);
-    const where = [repo.owner, repo.repo, skill.dir].filter(Boolean).join('/');
-    const url = `https://github.com/${repo.owner}/${repo.repo}/tree/${repo.ref}${skill.dir ? `/${skill.dir}` : ''}`;
-    return reviewPackage(files, { kind: 'git', label: where, url });
+  /** download one Skill of a repository and review it like a picked folder; the review keeps where it came from */
+  async githubReview(found: { repo: Required<GithubRepo>; at: ResolvedRef }, skill: GithubSkill): Promise<SkillReview> {
+    const { repo, at } = found;
+    const fetch = this.fetcher();
+    const files = await downloadGithubSkill(fetch, repo, skill, at.commit).catch((e) => Promise.reject(githubError(e)));
+    // a branch: the folder's newest commit is what a later check compares
+    const dirCommit = at.refKind === 'branch' ? (await folderCommits(fetch, repo, at.commit, skill.dir, 1).catch(() => []))[0]?.sha : undefined;
+    const github: SkillGithubSource = { owner: repo.owner, repo: repo.repo, ref: at.ref, refKind: at.refKind, dir: skill.dir, commit: at.commit, ...(dirCommit && { dirCommit }) };
+    return reviewPackage(files, this.githubSource(github));
+  }
+
+  private fetcher() {
+    return (u: string) => this.store.fetch(u);
+  }
+
+  private githubSource(g: SkillGithubSource): Omit<SkillSource, 'format'> {
+    const where = [g.owner, g.repo, g.dir].filter(Boolean).join('/');
+    return { kind: 'git', label: where, url: `https://github.com/${g.owner}/${g.repo}/tree/${g.ref}${g.dir ? `/${g.dir}` : ''}`, github: g };
   }
 
   /** the installed Skill a review would replace, if any */
@@ -229,6 +257,8 @@ export class SkillService {
     // the stored package always carries the final manifest (also when the user mapped requirements)
     const files = packageFiles({ manifest, instructions: review.instructions }, review.files);
     if (files.some((f) => f.path !== 'skill.json' && f.path !== 'SKILL.md') && !this.store.available) throw new SkillError('SKILL_NOT_READY', 'Skills with resource files can be installed only in the desktop app.');
+    // replacing: the old files come back if the index cannot be saved (the native write itself swaps folders atomically)
+    const oldFiles = prev && this.store.available ? await this.store.read(manifest.id) : undefined;
     if (this.store.available) await this.store.write(manifest.id, files);
     const t = this.now();
     const skill: InstalledSkill = {
@@ -236,19 +266,197 @@ export class SkillService {
       instructions: review.instructions,
       origin: 'imported',
       source: review.source,
-      enabled: true,
+      enabled: o.enabled ?? true,
       installedAt: prev?.installedAt ?? t,
       updatedAt: t,
       // the hash of what came in (modification detection); the stored copy differs only by the final manifest
       packageHash: review.hash,
+      storeHash: await packageHash(files),
+      ...(review.unmappedTools.length && { declaredTools: review.unmappedTools }),
       files: review.fileInfo,
       importNotes: [...review.mapping, ...review.excluded.map((e) => `left out ${e.path}: ${e.reason}`)],
     };
+    const before = this.skills;
     this.skills = [...this.skills.filter((s) => s.manifest.id !== manifest.id), skill];
-    await this.save();
+    try {
+      await this.save();
+    } catch (e) {
+      this.skills = before;
+      if (this.store.available) await (oldFiles ? this.store.write(manifest.id, oldFiles) : this.store.remove(manifest.id)).catch(() => undefined);
+      throw e;
+    }
     this.bus?.emit('skill.installed', { skillId: manifest.id, version: manifest.version, origin: 'imported', replaced: !!prev });
     this.changed();
     return skill;
+  }
+
+  // ── updates (GitHub Skills; docs/SKILLS.md › Updates) ────
+  updateSettings(): SkillUpdateSettings {
+    return this.updates;
+  }
+  async setAutoCheck(auto: boolean) {
+    this.updates = { ...this.updates, auto };
+    await this.save();
+    this.changed();
+  }
+
+  /** Skills that came from GitHub (also those installed before RealmNest kept the commit) */
+  githubSkills(): InstalledSkill[] {
+    return this.skills.filter((s) => s.origin === 'imported' && (s.source.github || (s.source.kind === 'git' && s.source.url && parseGithubUrl(s.source.url))));
+  }
+  /** Skills with an update waiting for the user */
+  withUpdates(): InstalledSkill[] {
+    return this.skills.filter((s) => s.update?.available);
+  }
+  checkingUpdates() {
+    return !!this.checking;
+  }
+
+  /**
+   * Look for updates of GitHub Skills (all, or some): a branch → its folder's newest commit against the
+   * installed one; a tag → a newer version tag; a commit → nothing (pinned). Nothing is downloaded or installed.
+   */
+  checkUpdates(ids?: string[], auto = false) {
+    if (this.checking) return this.checking;
+    const run = async () => {
+      const list = this.githubSkills().filter((s) => !ids || ids.includes(s.manifest.id));
+      const fresh: { id: string; name: string }[] = [];
+      let failed = 0;
+      for (const s of list) {
+        const before = s.update?.available;
+        let state: SkillUpdateState;
+        let github: SkillGithubSource | undefined;
+        try {
+          ({ github, ...state } = await this.checkOne(s));
+        } catch (e) {
+          failed++;
+          state = { ...(s.update ?? {}), checkedAt: this.now(), error: githubError(e).message };
+        }
+        if (!this.get(s.manifest.id)) continue;
+        const target = (a?: SkillUpdateState['available']) => (a ? (a.kind === 'tag' ? a.tag : a.commit) : '');
+        if (state.available && target(state.available) !== target(before)) fresh.push({ id: s.manifest.id, name: s.manifest.name });
+        this.skills = this.skills.map((x) => (x.manifest.id === s.manifest.id ? { ...x, update: state, ...(github && { source: { ...x.source, github } }) } : x));
+      }
+      if (!ids) this.updates = { ...this.updates, lastCheck: this.now() };
+      await this.save();
+      this.bus?.emit('skill.updates', { available: this.withUpdates().map((s) => s.manifest.id), fresh, auto });
+      return { checked: list.length, available: this.withUpdates().length, failed };
+    };
+    this.checking = run().finally(() => {
+      this.checking = undefined;
+      this.changed();
+    });
+    this.changed();
+    return this.checking;
+  }
+
+  /** one Skill's check; `github` is set when the source was completed (an older install) */
+  private async checkOne(s: InstalledSkill): Promise<SkillUpdateState & { github?: SkillGithubSource }> {
+    const fetch = this.fetcher();
+    const checkedAt = this.now();
+    let g = s.source.github;
+    let adopted: SkillGithubSource | undefined;
+    if (!g) {
+      // installed before the commit was kept: find what it follows; on a branch, the files say whether it is the newest
+      const p = parseGithubUrl(s.source.url ?? '')!;
+      const at = await resolveRef(fetch, p);
+      g = { owner: p.owner, repo: p.repo, ref: at.ref, refKind: at.refKind, dir: p.base, commit: at.commit };
+      if (at.refKind === 'branch') {
+        const head = (await folderCommits(fetch, g, at.ref, g.dir, 1))[0];
+        const remote = head && (await this.fetchSkill(g, head.sha));
+        if (head && remote?.hash === s.packageHash) g = { ...g, commit: head.sha, dirCommit: head.sha };
+      }
+      adopted = g;
+    }
+    if (g.refKind === 'commit') return { checkedAt, ...(adopted && { github: adopted }) };
+    if (g.refKind === 'tag') {
+      const tag = await newerTag(fetch, g, g.ref);
+      return { checkedAt, ...(tag && { available: { kind: 'tag', tag } }), ...(adopted && { github: adopted }) };
+    }
+    const commits = await folderCommits(fetch, g, g.ref, g.dir, 10);
+    const head = commits[0];
+    if (!head) throw new Error(`The folder ${g.dir || '(root)'} is not on ${g.ref} any more.`);
+    if (head.sha === g.dirCommit) return { checkedAt, ...(adopted && { github: adopted }) };
+    const known = g.dirCommit ? commits.findIndex((c) => c.sha === g.dirCommit) : -1;
+    return { checkedAt, available: { kind: 'commit', commit: head.sha, commits: known >= 0 ? commits.slice(0, known) : commits, more: known < 0 }, ...(adopted && { github: adopted }) };
+  }
+
+  /** a GitHub Skill's files at a commit or ref, reviewed */
+  private async fetchSkill(g: SkillGithubSource, at: string): Promise<SkillReview> {
+    const fetch = this.fetcher();
+    const found = await listGithubSkills(fetch, { owner: g.owner, repo: g.repo, ref: at, base: g.dir });
+    const skill = found.skills.find((x) => x.dir === g.dir);
+    if (!skill) throw new SkillError('SKILL_NOT_FOUND', `There is no SKILL.md in ${g.dir || 'the repository root'} at ${at.slice(0, 12)} any more.`);
+    const files = await downloadGithubSkill(fetch, found.repo, skill, found.at.commit);
+    return reviewPackage(files, this.githubSource({ ...g, commit: found.at.commit }));
+  }
+
+  /** download the update and describe it (files, commits, sensitive changes, local edits); nothing is installed */
+  async prepareUpdate(id: string): Promise<SkillUpdatePlan> {
+    const s = this.get(id);
+    const g = s?.source.github;
+    const available = s?.update?.available;
+    if (!s || !g || !available) throw new SkillError('SKILL_NOT_FOUND', 'There is no update for this Skill: check for updates first.');
+    try {
+      const at = available.kind === 'commit' ? available.commit : available.tag;
+      const fetched = await this.fetchSkill(available.kind === 'tag' ? { ...g, ref: available.tag, refKind: 'tag' } : g, at);
+      const next: SkillGithubSource = { ...g, ...(available.kind === 'tag' && { ref: available.tag }), commit: fetched.source.github!.commit, ...(available.kind === 'commit' && { dirCommit: available.commit }) };
+      const review: SkillReview = { ...fetched, source: { ...fetched.source, ...this.githubSource(next) } };
+      // the same Skill: its id, and what the user mapped when the package had no RealmNest manifest
+      const overrides: InstallOptions['overrides'] = {
+        id,
+        ...(review.needsConfirmation && { requiresCapabilities: s.manifest.requiresCapabilities, requiresTools: s.manifest.requiresTools, optionalTools: s.manifest.optionalTools, tags: s.manifest.tags }),
+      };
+      const after = { ...review.manifest, ...overrides };
+      const stored = this.store.available ? await this.store.read(id) : [];
+      const localChanges = !!s.modified || (!!s.storeHash && this.store.available && (await packageHash(stored)) !== s.storeHash);
+      const plan: SkillUpdatePlan = {
+        id,
+        name: s.manifest.name,
+        from: { ref: g.ref, commit: g.commit, version: s.manifest.version },
+        to: { ref: next.ref, commit: next.commit, version: after.version },
+        commits: available.kind === 'commit' ? available.commits : [],
+        more: available.kind === 'commit' && available.more,
+        files: fileChanges({ files: stored, instructions: s.instructions }, { files: review.files, instructions: review.instructions }),
+        sensitive: sensitiveChanges({ manifest: s.manifest, declaredTools: s.declaredTools }, { manifest: after, declaredTools: review.unmappedTools }),
+        localChanges,
+        problems: review.problems,
+        warnings: review.warnings,
+      };
+      this.plans.set(id, { plan, review, overrides });
+      return plan;
+    } catch (e) {
+      throw e instanceof SkillError ? e : githubError(e);
+    }
+  }
+
+  /** install a prepared update: atomic (the old version stays if anything fails); local edits need `overwriteLocal` */
+  async applyUpdate(id: string, o: { overwriteLocal?: boolean } = {}): Promise<InstalledSkill> {
+    const p = this.plans.get(id);
+    const s = this.get(id);
+    if (!p || !s) throw new SkillError('SKILL_NOT_FOUND', 'Review the update first.');
+    if (p.plan.problems.length) throw new SkillError('SKILL_NOT_READY', 'This version cannot be installed.', p.plan.problems);
+    if (p.plan.localChanges && !o.overwriteLocal) throw new SkillError('SKILL_CONFLICT', 'This Skill was changed here since it was installed: confirm that the update may replace those changes.');
+    const installed = await this.install(p.review, { replace: true, overrides: p.overrides, enabled: s.enabled });
+    this.plans.delete(id);
+    this.bus?.emit('skill.updated', { skillId: id, version: installed.manifest.version });
+    this.bus?.emit('skill.updates', { available: this.withUpdates().map((x) => x.manifest.id), fresh: [], auto: false });
+    return installed;
+  }
+
+  discardUpdate(id: string) {
+    this.plans.delete(id);
+  }
+
+  /** the automatic check: a few minutes after start, then whenever a day has passed since the last one */
+  startAutoCheck(): () => void {
+    const tick = () => {
+      if (!this.updates.auto || !this.store.available || !this.githubSkills().length || this.now() - this.updates.lastCheck < UPDATE_EVERY_MS) return;
+      void this.checkUpdates(undefined, true).catch(() => undefined);
+    };
+    const first = setTimeout(tick, 3 * 60_000);
+    const every = setInterval(tick, 60 * 60_000);
+    return () => (clearTimeout(first), clearInterval(every));
   }
 
   /** a Skill written in RealmNest */
@@ -444,7 +652,7 @@ export class SkillService {
   // ── plumbing ─────────────────────────────────────────────
   private save() {
     // built-ins are code: only their on/off state is stored
-    return this.storage.set(KEY, { version: 1, skills: this.skills.map((s) => (s.origin === 'built_in' ? { ...s, instructions: '' } : s)) });
+    return this.storage.set(KEY, { version: 1, skills: this.skills.map((s) => (s.origin === 'built_in' ? { ...s, instructions: '' } : s)), updates: this.updates });
   }
 
   subscribe = (fn: () => void) => {

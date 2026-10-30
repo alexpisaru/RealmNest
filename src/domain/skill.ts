@@ -75,6 +75,31 @@ export interface SkillSource {
   homepage?: string;
   /** the format it came in: a RealmNest package, an Agent Skills folder, a single SKILL.md, a bundle */
   format: SkillPackageFormat;
+  /** installed from GitHub: exactly where, to look for updates (docs/SKILLS.md › Updates) */
+  github?: SkillGithubSource;
+}
+
+/** where on GitHub a Skill came from */
+export interface SkillGithubSource {
+  owner: string;
+  repo: string;
+  /** what it follows: a branch (updates come from it), a tag or a commit (pinned) */
+  ref: string;
+  refKind: 'branch' | 'tag' | 'commit';
+  /** the folder holding SKILL.md ('' = the repo root) */
+  dir: string;
+  /** the commit the files were taken from */
+  commit: string;
+  /** the last commit that changed the folder when it was installed (a check compares this one) */
+  dirCommit?: string;
+}
+
+/** what the last update check found */
+export interface SkillUpdateState {
+  checkedAt: number;
+  /** a branch moved on (the folder's newest commit and the commits since), or a newer version tag exists */
+  available?: { kind: 'commit'; commit: string; commits: { sha: string; message: string; date?: string }[]; more: boolean } | { kind: 'tag'; tag: string };
+  error?: string;
 }
 
 export type SkillPackageFormat = 'nestra-package' | 'nestra-bundle' | 'agent-skills' | 'skill-md';
@@ -104,8 +129,12 @@ export interface InstalledSkill {
   files: SkillFileInfo[];
   /** what the importer mapped or left out (shown in the detail) */
   importNotes?: string[];
-  /** a future update (not checked online yet) */
-  availableVersion?: string;
+  /** the hash of the package as RealmNest stored it (a change made outside RealmNest shows) */
+  storeHash?: string;
+  /** tools another product's format named (allowed-tools), kept to show when an update changes them */
+  declaredTools?: string[];
+  /** GitHub Skills: the last update check */
+  update?: SkillUpdateState;
 }
 
 /** what a run remembers about the Skills it used (survives uninstall) */
